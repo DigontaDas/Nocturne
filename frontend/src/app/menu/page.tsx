@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Sparkles } from "lucide-react";
 import { fetchMenuItems } from "@/lib/api";
 import { FALLBACK_MENU_ITEMS } from "@/lib/fallback-data";
 import { useReservationContext } from "@/context/ReservationContext";
@@ -51,19 +50,17 @@ function MenuPageContent() {
           <button
             type="button"
             onClick={() => setConciergeOpen(true)}
-            className="inline-flex items-center gap-2 px-5 py-3 border border-brass/35 bg-charcoal hover:border-brass text-cream font-syne text-[10px] uppercase tracking-[0.2em] transition-colors"
+            className="inline-flex items-center px-5 py-3 border border-brass/35 bg-charcoal hover:border-brass text-cream font-sans text-xs font-medium uppercase tracking-[0.16em] transition-colors"
           >
-            <Sparkles className="w-3.5 h-3.5 text-brass" />
-            <span>Ask Sommelier (Ctrl+J)</span>
+            <span>Ask Sommelier</span>
           </button>
 
           <Link
             href="/reserve"
             data-cursor="RESERVE"
-            className="inline-flex items-center gap-2 px-5 py-3 bg-brass hover:bg-brass-soft text-obsidian font-syne text-[10px] font-bold uppercase tracking-[0.22em] transition-colors"
+            className="inline-flex items-center px-5 py-3 bg-brass hover:bg-brass-soft text-obsidian font-sans text-xs font-semibold uppercase tracking-[0.18em] transition-colors"
           >
             <span>Floorplan &amp; Seat Selection</span>
-            <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       </div>

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, Lock, Menu, Sparkles, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useReservationContext } from "@/context/ReservationContext";
 
 const NAV_LINKS = [
@@ -19,7 +19,7 @@ const NAV_LINKS = [
     index: "02",
     href: "/reserve",
     label: "Floorplan",
-    subtitle: "2D Acoustic Sightlines",
+    subtitle: "Acoustic Sightlines",
     match: (p: string) => p.startsWith("/reserve"),
   },
   {
@@ -31,53 +31,20 @@ const NAV_LINKS = [
   },
 ] as const;
 
-function CelestialAstrolabeLogo({ scrollY }: { scrollY: number }) {
-  const outerRot = (scrollY * 0.14) % 360;
-  const innerRot = (-scrollY * 0.22) % 360;
+function NocturneEmblem({ scrollY }: { scrollY: number }) {
+  const rot = (scrollY * 0.08) % 360;
 
   return (
-    <svg
-      viewBox="0 0 44 44"
-      className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 overflow-visible"
-      aria-hidden="true"
+    <div
+      className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full overflow-hidden border border-brass/30 bg-obsidian flex items-center justify-center"
+      style={{ transform: `rotate(${rot}deg)` }}
     >
-      <g transform={`rotate(${outerRot} 22 22)`}>
-        <circle
-          cx="22"
-          cy="22"
-          r="19"
-          fill="none"
-          stroke="#D4AF37"
-          strokeWidth="0.85"
-          strokeDasharray="2.5 3.5"
-          strokeOpacity="0.85"
-        />
-        <circle cx="22" cy="3" r="1.4" fill="#D4AF37" />
-        <circle cx="22" cy="41" r="1" fill="#D4AF37" fillOpacity="0.65" />
-      </g>
-
-      <g transform={`rotate(${innerRot} 22 22)`}>
-        <circle
-          cx="22"
-          cy="22"
-          r="13.5"
-          fill="none"
-          stroke="#D4AF37"
-          strokeWidth="0.7"
-          strokeOpacity="0.5"
-        />
-        <path
-          d="M 22 9.5 A 12.5 12.5 0 1 1 11.2 28.2 A 9.6 9.6 0 1 0 22 9.5 Z"
-          fill="#D4AF37"
-          fillOpacity="0.88"
-        />
-      </g>
-
-      <path
-        d="M22 16.5 L23.3 20.7 L27.5 22 L23.3 23.3 L22 27.5 L20.7 23.3 L16.5 22 L20.7 20.7 Z"
-        fill="#FAF7F2"
+      <img
+        src="/web-app-manifest-192x192.png"
+        alt="Nocturne emblem"
+        className="w-full h-full object-contain scale-105 mix-blend-lighten"
       />
-    </svg>
+    </div>
   );
 }
 
@@ -121,13 +88,13 @@ export function Navbar() {
         }`}
       >
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 h-16 sm:h-20 flex items-center justify-between gap-4">
-          {/* Bespoke Celestial Identity */}
+          {/* Nocturne Emblem & Wordmark */}
           <Link
             href="/"
             className="flex items-center gap-3 sm:gap-3.5 group shrink-0"
             data-cursor="RESERVE"
           >
-            <CelestialAstrolabeLogo scrollY={scrollY} />
+            <NocturneEmblem scrollY={scrollY} />
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <span className="font-display text-base sm:text-xl tracking-[0.26em] sm:tracking-[0.3em] text-cream uppercase leading-none font-semibold group-hover:text-brass transition-colors">
@@ -138,8 +105,8 @@ export function Navbar() {
                   Dhaka
                 </span>
               </div>
-              <span className="font-mono text-[8.5px] sm:text-[9px] tracking-[0.24em] text-sand/75 uppercase mt-1">
-                23.79°N • Banani Level 14
+              <span className="font-sans text-[10px] tracking-[0.2em] text-sand/75 uppercase mt-1 tabular-nums">
+                Banani Level 14
               </span>
             </div>
           </Link>
@@ -161,7 +128,7 @@ export function Navbar() {
                   className="relative py-2.5 flex items-baseline gap-2.5 group"
                 >
                   <span
-                    className={`font-mono text-[10px] tracking-[0.2em] transition-colors ${
+                    className={`font-sans text-[10px] tracking-[0.18em] tabular-nums transition-colors ${
                       isActive || hoveredHref === item.href
                         ? "text-brass"
                         : "text-sand/45 group-hover:text-brass/80"
@@ -170,16 +137,16 @@ export function Navbar() {
                     {item.index}
                   </span>
                   <span
-                    className={`font-syne text-[11px] uppercase tracking-[0.24em] transition-colors ${
+                    className={`font-sans text-[11px] uppercase tracking-[0.2em] font-medium transition-colors ${
                       isActive || hoveredHref === item.href
-                        ? "text-cream font-bold"
+                        ? "text-cream"
                         : "text-sand/85 group-hover:text-cream"
                     }`}
                   >
                     {item.label}
                   </span>
                   {item.href === "/menu" && totalCount > 0 && (
-                    <span className="font-mono text-[10px] text-brass tabular-nums">
+                    <span className="font-sans text-[11px] text-brass tabular-nums">
                       ({totalCount})
                     </span>
                   )}
@@ -204,41 +171,32 @@ export function Navbar() {
               title="Inspect active seating & dining window"
             >
               {heldTable ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-2 text-ember font-mono text-[10.5px] uppercase tracking-wider tabular-nums">
-                  <Lock className="w-3 h-3 animate-pulse" />
-                  {heldTable.tableCode} HELD
+                <span className="inline-flex items-center gap-1.5 px-3 py-2 text-ember font-sans text-[11px] font-medium uppercase tracking-[0.14em] tabular-nums">
+                  {heldTable.tableCode} Held
                 </span>
               ) : (
-                <span className="px-3 py-2 font-mono text-[10.5px] text-sand uppercase tracking-wider tabular-nums">
-                  {selectedSlot} • {partySize}P
+                <span className="px-3.5 py-2 font-sans text-[11px] text-sand uppercase tracking-[0.14em] tabular-nums">
+                  {selectedSlot} &middot; {partySize}P
                 </span>
               )}
 
               {pathname !== "/reserve" && (
-                <span className="hidden xl:inline-flex items-center gap-1.5 px-3.5 py-2 font-syne text-[10px] font-bold uppercase tracking-[0.2em] text-brass hover:text-cream transition-colors">
-                  <span>Reserve</span>
-                  <ArrowUpRight className="w-3 h-3" />
+                <span className="hidden xl:inline-flex items-center px-4 py-2 font-sans text-[11px] font-medium uppercase tracking-[0.18em] text-brass hover:text-cream transition-colors">
+                  Reserve
                 </span>
               )}
             </Link>
 
-            {/* AI Sommelier Concierge Architectural Button */}
+            {/* Concierge Drawer Button */}
             <button
               type="button"
               onClick={() => setConciergeOpen((prev) => !prev)}
               data-cursor="RESERVE"
-              className="relative group inline-flex items-center gap-2 px-3 sm:px-4 py-2 border border-brass/45 hover:border-brass bg-obsidian/80 text-cream transition-colors"
+              className="relative inline-flex items-center px-4 py-2 border border-brass/45 hover:border-brass bg-obsidian/80 text-cream transition-colors"
             >
-              {/* Subtle brass architectural corner accents */}
-              <span className="pointer-events-none absolute top-0 left-0 w-1.5 h-1.5 border-t border-l border-brass" />
-              <span className="pointer-events-none absolute bottom-0 right-0 w-1.5 h-1.5 border-b border-r border-brass" />
-              <Sparkles className="w-3.5 h-3.5 text-brass group-hover:rotate-12 transition-transform" />
-              <span className="font-syne text-[10px] sm:text-[10.5px] uppercase tracking-[0.2em]">
-                <span className="hidden xs:inline sm:inline">Concierge</span>
+              <span className="font-sans text-[11px] font-medium uppercase tracking-[0.18em]">
+                <span className="hidden sm:inline">Concierge</span>
                 <span className="sm:hidden">Ask</span>
-              </span>
-              <span className="hidden md:inline font-mono text-[9.5px] text-brass/85 border-l border-brass/25 pl-2">
-                ⌘J
               </span>
             </button>
 
@@ -269,10 +227,10 @@ export function Navbar() {
             className="fixed inset-x-0 top-16 sm:top-20 bottom-0 z-30 lg:hidden bg-obsidian/96 backdrop-blur-2xl border-t border-brass/20 overflow-y-auto overscroll-contain flex flex-col justify-between p-6 pb-10"
           >
             <div className="space-y-6">
-              <div className="font-mono text-[10px] uppercase tracking-[0.26em] text-brass/80 border-b border-brass/15 pb-3 flex items-center justify-between">
+              <div className="font-sans text-[11px] uppercase tracking-[0.2em] text-brass/85 border-b border-brass/15 pb-3 flex items-center justify-between">
                 <span>Nocturne Architecture</span>
                 <span className="tabular-nums">
-                  {selectedSlot} • {partySize} Guests
+                  {selectedSlot} &middot; {partySize} Guests
                 </span>
               </div>
 
@@ -287,7 +245,7 @@ export function Navbar() {
                       className="flex items-center justify-between py-5 group"
                     >
                       <div className="flex items-baseline gap-4">
-                        <span className="font-mono text-xs text-brass">{item.index}</span>
+                        <span className="font-sans text-xs text-brass tabular-nums">{item.index}</span>
                         <div>
                           <div
                             className={`font-display text-2xl uppercase tracking-[0.14em] ${
@@ -304,7 +262,6 @@ export function Navbar() {
                           </div>
                         </div>
                       </div>
-                      <ArrowUpRight className="w-5 h-5 text-brass/70 group-hover:text-brass transition-colors" />
                     </Link>
                   );
                 })}
@@ -316,9 +273,8 @@ export function Navbar() {
                 <Link
                   href="/reserve"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full py-3 px-4 border border-ember/50 bg-ember/10 text-ember font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 border border-ember/50 bg-ember/10 text-ember font-sans text-xs font-medium uppercase tracking-[0.14em] flex items-center justify-center"
                 >
-                  <Lock className="w-3.5 h-3.5" />
                   <span>Resume Active Hold: Table {heldTable.tableCode}</span>
                 </Link>
               )}
@@ -329,23 +285,21 @@ export function Navbar() {
                   setMobileMenuOpen(false);
                   setConciergeOpen(true);
                 }}
-                className="w-full py-3.5 px-4 border border-brass/40 bg-charcoal text-cream font-syne text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-4 border border-brass/40 bg-charcoal text-cream font-sans text-xs font-medium uppercase tracking-[0.18em] flex items-center justify-center"
               >
-                <Sparkles className="w-4 h-4 text-brass" />
                 <span>Ask Our Maître d&apos; &amp; Sommelier</span>
               </button>
 
               <Link
                 href="/reserve"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full py-3.5 px-4 bg-brass text-obsidian font-syne text-[11px] font-bold uppercase tracking-[0.22em] flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-4 bg-brass text-obsidian font-sans text-xs font-semibold uppercase tracking-[0.18em] flex items-center justify-center"
               >
                 <span>Lock Seat &amp; Pre-Order</span>
-                <ArrowUpRight className="w-4 h-4" />
               </Link>
 
-              <p className="pt-2 text-center font-mono text-[10px] uppercase tracking-[0.22em] text-sand/65">
-                Banani Road 11 • Level 14 Penthouse • Dhaka
+              <p className="pt-2 text-center font-sans text-[11px] uppercase tracking-[0.18em] text-sand/65">
+                Banani Road 11 &middot; Level 14 Penthouse &middot; Dhaka
               </p>
             </div>
           </motion.div>

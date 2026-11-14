@@ -1,6 +1,7 @@
 {
   "name": "Nocturne",
   "short_name": "Nocturne",
+  "description": "14th-floor oak-hearth fine dining and rooftop skyline sanctuary at Banani Road 11, Dhaka.",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",

@@ -11,7 +11,6 @@ import {
   Flame,
   Send,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import { useReservationContext } from "@/context/ReservationContext";
 
@@ -197,12 +196,8 @@ export function CulinaryPhilosophySection() {
           >
             <div>
               <div className="flex items-center justify-between gap-2 pb-4 border-b border-brass/20">
-                <span className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.26em] text-brass">
-                  <Sparkles className="w-3.5 h-3.5" />
+                <span className="font-sans text-[11px] font-medium uppercase tracking-[0.2em] text-brass">
                   Maître d&apos; Desk
-                </span>
-                <span className="font-mono text-[10px] text-cream/70 border border-brass/25 px-2 py-0.5">
-                  Ctrl + J
                 </span>
               </div>
 
@@ -314,7 +309,7 @@ export function CulinaryPhilosophySection() {
                   y="42"
                   fill="#D4AF37"
                   fontSize="8"
-                  fontFamily="monospace"
+                  fontFamily="var(--font-sans), system-ui, sans-serif"
                   letterSpacing="1.6"
                 >
                   ROOFTOP 52dB
@@ -333,7 +328,7 @@ export function CulinaryPhilosophySection() {
                   y="42"
                   fill="#A39B93"
                   fontSize="8"
-                  fontFamily="monospace"
+                  fontFamily="var(--font-sans), system-ui, sans-serif"
                   letterSpacing="1.4"
                 >
                   GLASS KITCHEN
@@ -352,7 +347,7 @@ export function CulinaryPhilosophySection() {
                   y="42"
                   fill="#7FA68B"
                   fontSize="8"
-                  fontFamily="monospace"
+                  fontFamily="var(--font-sans), system-ui, sans-serif"
                   letterSpacing="1.4"
                 >
                   LOUNGE 46dB
@@ -380,7 +375,7 @@ export function CulinaryPhilosophySection() {
                         textAnchor="middle"
                         fill="#F4EFE6"
                         fontSize="7.5"
-                        fontFamily="monospace"
+                        fontFamily="var(--font-sans), system-ui, sans-serif"
                       >
                         {tbl.code}
                       </text>

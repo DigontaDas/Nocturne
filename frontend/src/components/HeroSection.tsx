@@ -6,10 +6,8 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import {
-  ArrowRight,
   Calendar,
   Clock,
-  Sparkles,
   Users,
 } from "lucide-react";
 import { useReservationContext } from "@/context/ReservationContext";
@@ -290,21 +288,19 @@ export function HeroSection() {
               <button
                 type="submit"
                 data-cursor="RESERVE"
-                className="flex-1 flex items-center justify-center gap-2.5 px-5 py-3.5 bg-brass hover:bg-brass-soft text-obsidian font-syne text-[11px] font-bold uppercase tracking-[0.2em] transition-colors"
+                className="flex-1 flex items-center justify-center px-5 py-3.5 bg-brass hover:bg-brass-soft text-obsidian font-sans text-xs font-semibold uppercase tracking-[0.18em] transition-colors"
               >
                 <span>Inspect Tables</span>
-                <ArrowRight className="w-3.5 h-3.5" />
               </button>
 
               <button
                 type="button"
                 onClick={() => setConciergeOpen(true)}
                 aria-label="Ask our Concierge"
-                className="px-4 py-3.5 bg-charcoal/80 hover:bg-charcoal text-brass hover:text-cream transition-colors flex items-center justify-center gap-1.5"
-                title="Sommelier & Maître d' (Ctrl+J)"
+                className="px-4 py-3.5 bg-charcoal/80 hover:bg-charcoal text-brass hover:text-cream transition-colors flex items-center justify-center"
+                title="Sommelier & Maître d'"
               >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span className="font-mono text-[10px] uppercase tracking-[0.18em] hidden sm:inline">
+                <span className="font-sans text-[11px] font-medium uppercase tracking-[0.16em]">
                   Concierge
                 </span>
               </button>

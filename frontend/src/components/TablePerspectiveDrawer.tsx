@@ -9,7 +9,6 @@ import {
   Clock,
   Compass,
   Lock,
-  Sparkles,
   Unlock,
   Users,
   Volume2,
@@ -94,9 +93,8 @@ export function TablePerspectiveDrawer({
         <button
           type="button"
           onClick={onQuickSelectBestQuiet}
-          className="mt-6 w-full py-3.5 px-5 rounded-full bg-brass hover:bg-brass-soft text-obsidian font-medium text-sm flex items-center justify-center gap-2 transition-all shadow-brass"
+          className="mt-6 w-full py-3.5 px-5 rounded-full bg-brass hover:bg-brass-soft text-obsidian font-sans font-semibold text-sm flex items-center justify-center transition-all shadow-brass"
         >
-          <Sparkles className="w-4 h-4" />
           <span>Hold Quietest Sunset Two-Top (T-04)</span>
         </button>
       </aside>

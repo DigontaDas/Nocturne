@@ -3,8 +3,6 @@ import {
   Cinzel,
   Instrument_Serif,
   Outfit,
-  Space_Mono,
-  Syne,
 } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/AppProviders";
@@ -24,36 +22,22 @@ const cinzel = Cinzel({
 const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
   weight: "400",
-  style: "italic",
+  style: ["normal", "italic"],
   variable: "--font-serif-italic",
-  display: "swap",
-});
-
-const syne = Syne({
-  subsets: ["latin"],
-  weight: ["500", "700"],
-  variable: "--font-syne",
   display: "swap",
 });
 
 const outfit = Outfit({
   subsets: ["latin"],
-  weight: ["300", "400", "500"],
+  weight: ["300", "400", "500", "600"],
   variable: "--font-sans",
   display: "swap",
 });
 
-const spaceMono = Space_Mono({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-mono",
-  display: "swap",
-});
-
 export const metadata: Metadata = {
-  title: "Nocturne — Rooftop Fine Dining & Skyline Sanctuary (Dhaka)",
+  title: "Nocturne, Rooftop Dining Sanctuary in Dhaka",
   description:
-    "Reserve your exact architectural table perspective, spin the seasonal tasting sequence, and dine at Banani Road 11's 14th-floor penthouse.",
+    "Reserve your exact 14th-floor skyline seat on an interactive Banani architectural floorplan with acoustic metering, seasonal wood-fired tasting pre-orders, early bKash or card settlement, and real-time culinary guidance.",
   icons: {
     icon: [
       { url: "/favicon.ico" },
@@ -76,7 +60,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${cinzel.variable} ${instrumentSerif.variable} ${syne.variable} ${outfit.variable} ${spaceMono.variable}`}
+      className={`${cinzel.variable} ${instrumentSerif.variable} ${outfit.variable}`}
     >
       <body className="bg-obsidian text-cream font-sans antialiased">
         <AppProviders>

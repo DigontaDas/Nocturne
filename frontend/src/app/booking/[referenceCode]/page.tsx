@@ -10,12 +10,9 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  CreditCard,
   MapPin,
   RotateCcw,
   ShieldCheck,
-  Smartphone,
-  Sparkles,
   UserX,
   Users,
   UtensilsCrossed,
@@ -495,8 +492,12 @@ function BookingPassContent({
 
           <div className="relative z-10 flex flex-col md:flex-row md:items-start justify-between gap-6">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-obsidian/85 border border-brass/40 font-mono text-[10px] uppercase tracking-[0.25em] text-brass">
-                <Sparkles className="w-3 h-3" />
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-obsidian/85 border border-brass/40 font-sans text-[11px] font-medium uppercase tracking-[0.2em] text-brass">
+                <img
+                  src="/web-app-manifest-192x192.png"
+                  alt="Nocturne emblem"
+                  className="w-4 h-4 rounded-full object-contain mix-blend-lighten"
+                />
                 Nocturne Dhaka &bull; Level 14 Penthouse
               </div>
               <h1 className="mt-4 font-display text-3xl sm:text-5xl uppercase tracking-[0.06em] text-cream leading-tight">
@@ -797,9 +798,8 @@ function BookingPassContent({
                   type="button"
                   disabled={payingGateway !== null || verifyingPayment}
                   onClick={() => handleStartEarlyPayment("bkash")}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-brass hover:bg-brass-soft disabled:opacity-60 text-obsidian font-syne text-[10px] font-bold uppercase tracking-[0.18em] transition-colors"
+                  className="inline-flex items-center px-4 py-2.5 bg-brass hover:bg-brass-soft disabled:opacity-60 text-obsidian font-sans text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors"
                 >
-                  <Smartphone className="w-3.5 h-3.5" />
                   <span>
                     {payingGateway === "bkash"
                       ? "Connecting bKash..."
@@ -810,9 +810,8 @@ function BookingPassContent({
                   type="button"
                   disabled={payingGateway !== null || verifyingPayment}
                   onClick={() => handleStartEarlyPayment("card")}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 border border-brass/45 hover:border-brass disabled:opacity-60 text-cream font-syne text-[10px] font-bold uppercase tracking-[0.18em] transition-colors"
+                  className="inline-flex items-center px-4 py-2.5 border border-brass/45 hover:border-brass disabled:opacity-60 text-cream font-sans text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors"
                 >
-                  <CreditCard className="w-3.5 h-3.5 text-brass" />
                   <span>
                     {payingGateway === "card"
                       ? "Opening Card..."

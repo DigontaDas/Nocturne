@@ -25,9 +25,9 @@ const config: Config = {
       fontFamily: {
         display: ["var(--font-display)", "Georgia", "serif"],
         serif: ["var(--font-serif-italic)", "Georgia", "serif"],
-        syne: ["var(--font-syne)", "system-ui", "sans-serif"],
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
+        syne: ["var(--font-sans)", "system-ui", "sans-serif"],
+        mono: ["var(--font-sans)", "system-ui", "sans-serif"],
       },
       boxShadow: {
         brass: "0 0 0 1px rgba(212, 175, 55, 0.25)",

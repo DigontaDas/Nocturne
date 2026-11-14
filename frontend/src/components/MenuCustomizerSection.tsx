@@ -5,17 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
-  ArrowRight,
-  CreditCard,
   Minus,
   Plus,
   Search,
   ShieldCheck,
-  Smartphone,
-  Sparkles,
   Trash2,
-  UtensilsCrossed,
-  Wallet,
 } from "lucide-react";
 import {
   confirmReservation,
@@ -283,13 +277,10 @@ export function MenuCustomizerSection({
         <aside className="border border-brass/30 bg-charcoal/90 backdrop-blur-md p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           <div className="lg:col-span-6 space-y-5">
             <div className="flex items-center justify-between border-b border-brass/20 pb-4">
-              <div className="flex items-center gap-2.5">
-                <UtensilsCrossed className="w-4 h-4 text-brass" />
-                <h3 className="font-display text-lg uppercase tracking-[0.14em] text-cream">
-                  Pre-Order Tray
-                </h3>
-              </div>
-              <span className="font-mono text-[11px] px-2.5 py-1 bg-obsidian border border-brass/30 text-brass tabular-nums">
+              <h3 className="font-display text-lg uppercase tracking-[0.14em] text-cream">
+                Pre-Order Tray
+              </h3>
+              <span className="font-sans text-[11px] font-medium px-2.5 py-1 bg-obsidian border border-brass/30 text-brass tabular-nums">
                 {trayItems.reduce((acc, i) => acc + i.quantity, 0)} Items
               </span>
             </div>
@@ -297,7 +288,6 @@ export function MenuCustomizerSection({
             {/* Tray Items */}
             {trayItems.length === 0 ? (
               <div className="border border-dashed border-brass/30 bg-obsidian/45 p-6 text-center space-y-3">
-                <Sparkles className="w-4 h-4 text-brass mx-auto" />
                 <p className="font-sans text-xs text-sand/85 font-light leading-relaxed">
                   Dial or swipe the tasting wheel above to inspect a dish, customize portions &amp;
                   spice, or consult our Sommelier for 1-click pairings.
@@ -305,9 +295,9 @@ export function MenuCustomizerSection({
                 <button
                   type="button"
                   onClick={() => setConciergeOpen(true)}
-                  className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-brass hover:text-cream transition-colors"
+                  className="inline-flex items-center font-sans text-[11px] font-medium uppercase tracking-[0.16em] text-brass hover:text-cream transition-colors"
                 >
-                  Consult Concierge (Ctrl+J) &rarr;
+                  Consult Sommelier Concierge
                 </button>
               </div>
             ) : (
@@ -385,17 +375,17 @@ export function MenuCustomizerSection({
 
             {/* Totals & Macros */}
             <div className="border-t border-brass/20 pt-4 space-y-2">
-              <div className="flex items-center justify-between font-mono text-xs text-sand">
+              <div className="flex items-center justify-between font-sans text-xs text-sand">
                 <span>Tray Nutrition</span>
                 <span className="tabular-nums text-cream">
                   {totalKcal} kcal &bull; {totalProtein}g protein
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="font-syne text-[10px] uppercase tracking-[0.22em] text-sand">
+                <span className="font-sans text-[11px] font-medium uppercase tracking-[0.16em] text-sand">
                   Pre-Order Total
                 </span>
-                <span className="font-mono text-xl text-brass font-semibold tabular-nums">
+                <span className="font-sans text-xl text-brass font-semibold tabular-nums">
                   {formatBdt(traySubtotalBdt)}
                 </span>
               </div>
@@ -405,32 +395,31 @@ export function MenuCustomizerSection({
           <div className="lg:col-span-6 space-y-5">
             {/* Seat Lock Banner */}
             <div className="bg-obsidian p-4 border border-brass/25">
-              <div className="font-syne text-[10px] uppercase tracking-[0.22em] text-sand">
+              <div className="font-sans text-[11px] font-medium uppercase tracking-[0.16em] text-sand">
                 Selected Seat &amp; Window
               </div>
               {heldTable ? (
                 <div className="mt-2 flex items-center justify-between gap-2">
-                  <div className="font-mono text-xs text-cream">
+                  <div className="font-sans text-xs text-cream tabular-nums">
                     <span className="text-brass font-semibold">{heldTable.tableCode}</span>{" "}
                     &bull; {heldTable.reservationDate} &bull; {heldTable.timeSlot}
                   </div>
-                  <span className="font-mono text-[10px] uppercase px-2 py-0.5 bg-sage/20 text-sage border border-sage/35">
-                    LOCKED
+                  <span className="font-sans text-[10px] font-medium uppercase tracking-[0.14em] px-2 py-0.5 bg-sage/20 text-sage border border-sage/35">
+                    Locked
                   </span>
                 </div>
               ) : (
                 <div className="mt-2 space-y-2.5">
-                  <div className="text-xs text-ember font-mono leading-relaxed">
-                    No active seat hold — lock an open seat to bind your tasting sequence.
-                  </div>
+                  <p className="font-sans text-xs text-ember font-normal leading-relaxed">
+                    No active seat hold. Lock an open seat to bind your tasting sequence.
+                  </p>
                   {standalone && (
                     <Link
                       href="/reserve"
                       data-cursor="RESERVE"
-                      className="inline-flex items-center gap-2 font-syne text-[10px] font-bold uppercase tracking-[0.2em] text-brass hover:text-cream transition-colors"
+                      className="inline-flex items-center font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-brass hover:text-cream transition-colors"
                     >
-                      <span>Open 2D Floorplan Studio</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <span>Open Floorplan Studio</span>
                     </Link>
                   )}
                 </div>
@@ -438,16 +427,16 @@ export function MenuCustomizerSection({
             </div>
 
             {/* Guest Details Form */}
-            <form onSubmit={handleConfirmBooking} className="space-y-3">
+            <form onSubmit={handleConfirmBooking} className="space-y-3.5">
               {confirmError && (
-                <div className="bg-ember/15 border border-ember/50 p-3 text-xs text-cream flex items-start gap-2">
+                <div className="bg-ember/15 border border-ember/50 p-3 text-xs font-sans text-cream flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 text-ember shrink-0 mt-0.5" />
                   <span>{confirmError}</span>
                 </div>
               )}
 
               <div>
-                <label className="block font-syne text-[10px] uppercase tracking-[0.22em] text-sand mb-1.5">
+                <label className="block font-sans text-[11px] font-medium uppercase tracking-[0.16em] text-sand mb-1.5">
                   Guest Full Name
                 </label>
                 <input
@@ -462,7 +451,7 @@ export function MenuCustomizerSection({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-syne text-[10px] uppercase tracking-[0.22em] text-sand mb-1.5">
+                  <label className="block font-sans text-[11px] font-medium uppercase tracking-[0.16em] text-sand mb-1.5">
                     Mobile (+880)
                   </label>
                   <input
@@ -471,11 +460,11 @@ export function MenuCustomizerSection({
                     value={guestPhone}
                     onChange={(e) => setGuestPhone(e.target.value)}
                     placeholder="+8801711223344"
-                    className="w-full px-3.5 py-2.5 bg-obsidian border border-brass/25 font-mono text-xs text-cream focus:outline-none focus:border-brass transition-colors"
+                    className="w-full px-3.5 py-2.5 bg-obsidian border border-brass/25 font-sans text-xs tabular-nums text-cream placeholder:text-sand/50 focus:outline-none focus:border-brass transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block font-syne text-[10px] uppercase tracking-[0.22em] text-sand mb-1.5">
+                  <label className="block font-sans text-[11px] font-medium uppercase tracking-[0.16em] text-sand mb-1.5">
                     Occasion
                   </label>
                   <input
@@ -490,10 +479,10 @@ export function MenuCustomizerSection({
 
               <div>
                 <div className="flex items-center justify-between gap-2 mb-2">
-                  <label className="font-syne text-[10px] uppercase tracking-[0.22em] text-sand">
+                  <label className="font-sans text-[11px] font-medium uppercase tracking-[0.16em] text-sand">
                     Settlement Timing
                   </label>
-                  <span className="font-mono text-[10px] text-brass">
+                  <span className="font-sans text-[11px] text-brass font-medium tabular-nums">
                     {paymentMethod === "PAY_AT_VENUE"
                       ? "Settle at Table"
                       : `${traySubtotalBdt > 0 ? "Pre-Order" : "Deposit"} ${formatBdt(earlyPayAmountBdt)}`}
@@ -504,35 +493,33 @@ export function MenuCustomizerSection({
                   <button
                     type="button"
                     onClick={() => setPaymentMethod("PAY_AT_VENUE")}
-                    className={`p-2.5 border text-left transition-colors ${
+                    className={`p-3 border text-left transition-colors ${
                       paymentMethod === "PAY_AT_VENUE"
                         ? "border-brass bg-brass/12 text-cream"
                         : "border-brass/20 bg-obsidian/70 text-sand hover:border-brass/45"
                     }`}
                   >
-                    <Wallet className="w-3.5 h-3.5 text-brass mb-1.5" />
-                    <div className="font-syne text-[10px] font-bold uppercase tracking-[0.12em]">
+                    <div className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em]">
                       At Venue
                     </div>
-                    <div className="font-mono text-[9px] text-sand/70 mt-0.5">
-                      Pay on night
+                    <div className="font-sans text-[11px] text-sand/75 mt-1 font-light">
+                      Pay on evening
                     </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setPaymentMethod("BKASH")}
-                    className={`p-2.5 border text-left transition-colors ${
+                    className={`p-3 border text-left transition-colors ${
                       paymentMethod === "BKASH"
                         ? "border-brass bg-brass/12 text-cream"
                         : "border-brass/20 bg-obsidian/70 text-sand hover:border-brass/45"
                     }`}
                   >
-                    <Smartphone className="w-3.5 h-3.5 text-brass mb-1.5" />
-                    <div className="font-syne text-[10px] font-bold uppercase tracking-[0.12em]">
+                    <div className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em]">
                       bKash
                     </div>
-                    <div className="font-mono text-[9px] text-sand/70 mt-0.5">
+                    <div className="font-sans text-[11px] text-sand/75 mt-1 font-light">
                       {paymentConfig?.bkash.configured ? "bKash App" : "Test Checkout"}
                     </div>
                   </button>
@@ -540,18 +527,17 @@ export function MenuCustomizerSection({
                   <button
                     type="button"
                     onClick={() => setPaymentMethod("CARD")}
-                    className={`p-2.5 border text-left transition-colors ${
+                    className={`p-3 border text-left transition-colors ${
                       paymentMethod === "CARD"
                         ? "border-brass bg-brass/12 text-cream"
                         : "border-brass/20 bg-obsidian/70 text-sand hover:border-brass/45"
                     }`}
                   >
-                    <CreditCard className="w-3.5 h-3.5 text-brass mb-1.5" />
-                    <div className="font-syne text-[10px] font-bold uppercase tracking-[0.12em]">
+                    <div className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em]">
                       Card
                     </div>
-                    <div className="font-mono text-[9px] text-sand/70 mt-0.5">
-                      {paymentConfig?.card.configured ? "Visa · MC" : "Test Checkout"}
+                    <div className="font-sans text-[11px] text-sand/75 mt-1 font-light">
+                      {paymentConfig?.card.configured ? "Visa / Mastercard" : "Test Checkout"}
                     </div>
                   </button>
                 </div>
@@ -561,7 +547,7 @@ export function MenuCustomizerSection({
                 type="submit"
                 disabled={submitting}
                 data-cursor="RESERVE"
-                className="w-full py-3.5 px-5 bg-brass hover:bg-brass-soft disabled:opacity-60 text-obsidian font-syne text-[11px] font-bold uppercase tracking-[0.22em] flex items-center justify-center gap-2 transition-colors"
+                className="w-full py-3.5 px-5 bg-brass hover:bg-brass-soft disabled:opacity-60 text-obsidian font-sans text-xs font-semibold uppercase tracking-[0.18em] flex items-center justify-center transition-colors"
               >
                 <span>
                   {submitting
@@ -572,7 +558,6 @@ export function MenuCustomizerSection({
                         ? `Confirm & Pay ${formatBdt(earlyPayAmountBdt)} by Card`
                         : "Confirm Reservation & Issue Pass"}
                 </span>
-                <ArrowRight className="w-4 h-4" />
               </button>
             </form>
           </div>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Eye, Minus, Plus, RotateCcw, Sparkles, Volume2 } from "lucide-react";
+import { Eye, Minus, Plus, RotateCcw, Volume2 } from "lucide-react";
 import { RestaurantTable } from "@/types/nocturne";
 
 export type VibeOverlayMode = "none" | "quiet" | "window";
@@ -114,7 +114,7 @@ function RoundTable2({
         textAnchor="middle"
         fill={colors.text}
         fontSize="12"
-        fontFamily="var(--font-jetbrains), monospace"
+        fontFamily="var(--font-sans), system-ui, sans-serif"
         fontWeight="600"
       >
         {table.table_code}
@@ -124,7 +124,7 @@ function RoundTable2({
         textAnchor="middle"
         fill="#A39B8F"
         fontSize="9"
-        fontFamily="var(--font-jetbrains), monospace"
+        fontFamily="var(--font-sans), system-ui, sans-serif"
       >
         {table.noise_db} dB
       </text>
@@ -190,7 +190,7 @@ function RectTable4({
         textAnchor="middle"
         fill={colors.text}
         fontSize="12"
-        fontFamily="var(--font-jetbrains), monospace"
+        fontFamily="var(--font-sans), system-ui, sans-serif"
         fontWeight="600"
       >
         {table.table_code}
@@ -200,7 +200,7 @@ function RectTable4({
         textAnchor="middle"
         fill="#A39B8F"
         fontSize="9"
-        fontFamily="var(--font-jetbrains), monospace"
+        fontFamily="var(--font-sans), system-ui, sans-serif"
       >
         4P • {table.noise_db}dB
       </text>
@@ -269,7 +269,7 @@ function CurvedBooth6({
         textAnchor="middle"
         fill={colors.text}
         fontSize="12"
-        fontFamily="var(--font-jetbrains), monospace"
+        fontFamily="var(--font-sans), system-ui, sans-serif"
         fontWeight="600"
       >
         {table.table_code}
@@ -279,7 +279,7 @@ function CurvedBooth6({
         textAnchor="middle"
         fill="#A39B8F"
         fontSize="9"
-        fontFamily="var(--font-jetbrains), monospace"
+        fontFamily="var(--font-sans), system-ui, sans-serif"
       >
         VIP {table.capacity_max}P • {table.noise_db}dB
       </text>
@@ -440,7 +440,7 @@ export function FloorplanSvg({
               fill="#D4AF37"
               fontSize="10"
               letterSpacing="4"
-              fontFamily="var(--font-jetbrains), monospace"
+              fontFamily="var(--font-sans), system-ui, sans-serif"
             >
               BANANI LAKE &amp; GULSHAN SKYLINE BALUSTRADE
             </text>
@@ -479,7 +479,7 @@ export function FloorplanSvg({
               fill="#FAF7F2"
               fontSize="12"
               letterSpacing="2"
-              fontFamily="var(--font-cormorant), serif"
+              fontFamily="var(--font-display), Georgia, serif"
             >
               THE SKYLINE ROOFTOP (48–53 dB)
             </text>
@@ -509,7 +509,7 @@ export function FloorplanSvg({
               fill="#E05A37"
               fontSize="10"
               letterSpacing="2.5"
-              fontFamily="var(--font-jetbrains), monospace"
+              fontFamily="var(--font-sans), system-ui, sans-serif"
             >
               WHITE-OAK EMBER HEARTH &amp; GLASS PASS
             </text>
@@ -520,7 +520,7 @@ export function FloorplanSvg({
               fill="#FAF7F2"
               fontSize="12"
               letterSpacing="1.8"
-              fontFamily="var(--font-cormorant), serif"
+              fontFamily="var(--font-display), Georgia, serif"
             >
               THE CHEF&apos;S GLASS KITCHEN (55–66 dB)
             </text>
@@ -533,7 +533,7 @@ export function FloorplanSvg({
               fill="#A39B8F"
               fontSize="9"
               letterSpacing="2"
-              fontFamily="var(--font-jetbrains), monospace"
+              fontFamily="var(--font-sans), system-ui, sans-serif"
             >
               SOUTH BANANI WINDOW COLONNADE
             </text>
@@ -558,13 +558,13 @@ export function FloorplanSvg({
               fill="#FAF7F2"
               fontSize="12"
               letterSpacing="1.8"
-              fontFamily="var(--font-cormorant), serif"
+              fontFamily="var(--font-display), Georgia, serif"
             >
               THE VELVET LOUNGE (44–47 dB)
             </text>
 
             {/* Acoustic Threshold Callouts */}
-            <text x="525" y="634" textAnchor="middle" fill="#A39B8F" fontSize="10" fontFamily="var(--font-jetbrains), monospace">
+            <text x="525" y="634" textAnchor="middle" fill="#A39B8F" fontSize="10" fontFamily="var(--font-sans), system-ui, sans-serif">
               CLICK ANY AVAILABLE SEAT TO TRIGGER ATOMIC 10-MIN REDIS HOLD • NOCTURNE ARCHITECTURAL PLAN (1000 × 650)
             </text>
 
@@ -647,10 +647,9 @@ export function FloorplanSvg({
       </div>
 
       {/* Subtle Bottom Strip */}
-      <div className="px-5 py-3 bg-obsidian/70 border-t border-brass/10 flex items-center justify-between text-xs text-sand font-mono">
-        <span className="inline-flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-brass" />
-          Tip: Press Ctrl+J anytime to ask our Maître d&apos; &amp; Sommelier for seating advice.
+      <div className="px-5 py-3 bg-obsidian/70 border-t border-brass/10 flex items-center justify-between text-xs text-sand font-sans">
+        <span>
+          Select any table to inspect its view or consult our Maître d&apos; &amp; Sommelier.
         </span>
         <span className="hidden sm:inline">Drag canvas to pan · Click table for perspective</span>
       </div>

@@ -1,7 +1,7 @@
 # SYSTEM SPECIFICATION: NOCTURNE (Interactive 2D Seat-Picker, Pre-Order Studio & LangChain Culinary Concierge)
 
 ## 1. Product Vision & Aesthetic Direction
-**Name:** Nocturne — Fine Dining Reserve & AI Culinary Concierge (Dhaka Flagship)
+**Name:** Nocturne, Fine Dining Reserve & Culinary Concierge (Dhaka Flagship)
 **Visual Theme:** "Midnight Rooftop & Brass" (Awwwards-grade consumer hospitality experience—NO boring admin table dashboards).
 - **Canvas Background:** Deep Obsidian Espresso (`#0E0D0C`)
 - **Elevated Surface / Cards:** Warm Charcoal (`#171513`) with `1px solid rgba(212, 175, 55, 0.14)` hairline borders.

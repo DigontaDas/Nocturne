@@ -9,7 +9,6 @@ import {
   MapPin,
   Send,
   ShieldCheck,
-  Sparkles,
   Volume2,
   X,
 } from "lucide-react";
@@ -443,9 +442,8 @@ export function ConciergeDrawerShell() {
                   onClick={() => void sendPrompt(SAMPLE_PROMPT)}
                   className="w-full text-left bg-obsidian/80 hover:bg-obsidian border border-brass/30 hover:border-brass p-4 transition-all group"
                 >
-                  <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-brass mb-1.5">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Ask Our Sommelier</span>
+                  <div className="font-sans text-[11px] font-medium uppercase tracking-[0.18em] text-brass mb-1.5">
+                    Ask Our Sommelier
                   </div>
                   <p className="text-xs font-sans text-cream/90 leading-relaxed font-light group-hover:text-cream">
                     &ldquo;{SAMPLE_PROMPT}&rdquo;
@@ -578,9 +576,8 @@ export function ConciergeDrawerShell() {
                               void handleOneClickApply(msg.id, msg.cards!)
                             }
                             data-cursor="RESERVE"
-                            className="w-full py-3 px-4 bg-brass hover:bg-brass-soft text-obsidian font-syne text-[10px] font-bold uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-colors"
+                            className="w-full py-3 px-4 bg-brass hover:bg-brass-soft text-obsidian font-sans text-[11px] font-semibold uppercase tracking-[0.16em] flex items-center justify-center transition-colors"
                           >
-                            <Sparkles className="w-3.5 h-3.5" />
                             <span>
                               {actionSuccessId === msg.id
                                 ? "Held & Added! Opening Studio..."
