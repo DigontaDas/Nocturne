@@ -1,6 +1,52 @@
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _strip_wrapping_quotes(raw: object) -> str:
+    text = str(raw).strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in ('"', "'"):
+        return text[1:-1].strip()
+    return text
+
+
+def normalize_database_url(raw: object) -> str:
+    """Normalize Postgres URLs for asyncpg + cloud hosts like Neon/Railway."""
+    url = _strip_wrapping_quotes(raw)
+    if not url:
+        return url
+    if url.startswith("postgres://"):
+        url = "postgresql+asyncpg://" + url[len("postgres://") :]
+    elif url.startswith("postgresql://"):
+        url = "postgresql+asyncpg://" + url[len("postgresql://") :]
+
+    if not url.startswith("postgresql+asyncpg://"):
+        return url
+
+    parts = urlsplit(url)
+    if not parts.query:
+        return url
+
+    params: list[tuple[str, str]] = []
+    has_ssl = False
+    sslmode_val: str | None = None
+    for key, value in parse_qsl(parts.query, keep_blank_values=True):
+        lowered = key.lower()
+        if lowered in {"channel_binding", "uselibpqcompat"}:
+            continue
+        if lowered == "sslmode":
+            sslmode_val = value.lower()
+            continue
+        if lowered == "ssl":
+            has_ssl = True
+        params.append((key, value))
+
+    if sslmode_val in {"require", "verify-ca", "verify-full"} and not has_ssl:
+        params.append(("ssl", "require"))
+
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(params), parts.fragment))
 
 
 ROOT_ENV = Path(__file__).resolve().parents[3] / ".env"
@@ -63,6 +109,16 @@ class Settings(BaseSettings):
     STRIPE_CURRENCY: str = "bdt"
 
     PAYMENT_ALLOW_DEMO_SIMULATION: bool = True
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def validate_database_url(cls, v: object) -> str:
+        return normalize_database_url(v)
+
+    @field_validator("REDIS_URL", "FRONTEND_URL", mode="before")
+    @classmethod
+    def strip_url_quotes(cls, v: object) -> str:
+        return _strip_wrapping_quotes(v)
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

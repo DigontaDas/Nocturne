@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.core.config import settings
 
 _connect_args = (
-    {"timeout": 3} if settings.DATABASE_URL.startswith("postgresql") else {}
+    {"timeout": 15} if settings.DATABASE_URL.startswith("postgresql") else {}
 )
 
 engine = create_async_engine(

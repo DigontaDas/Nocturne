@@ -225,3 +225,22 @@ async def test_two_phase_seat_locking_and_concurrency(test_env):
     assert checkin.status_code == 200
     assert checkin.json()["status"] == "SEATED"
     assert checkin.json()["version"] == 2
+
+
+def test_database_url_normalization_for_cloud_providers():
+    from app.core.config import normalize_database_url
+
+    assert (
+        normalize_database_url(
+            '"postgresql://user:pass@ep-cool.neon.tech/neondb?sslmode=require&channel_binding=require"'
+        )
+        == "postgresql+asyncpg://user:pass@ep-cool.neon.tech/neondb?ssl=require"
+    )
+    assert (
+        normalize_database_url("postgres://u:p@postgres.railway.internal:5432/railway")
+        == "postgresql+asyncpg://u:p@postgres.railway.internal:5432/railway"
+    )
+    assert (
+        normalize_database_url("postgresql+asyncpg://u:p@ep.neon.tech/neondb?ssl=require")
+        == "postgresql+asyncpg://u:p@ep.neon.tech/neondb?ssl=require"
+    )
