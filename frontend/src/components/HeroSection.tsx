@@ -114,31 +114,6 @@ export function HeroSection() {
           );
       });
 
-      mm.add("(max-width: 767px)", () => {
-        gsap.fromTo(
-          apertureRef.current,
-          {
-            width: "84vw",
-            height: "48vh",
-            borderRadius: "180px 180px 4px 4px",
-          },
-          {
-            width: "100vw",
-            height: "68vh",
-            borderRadius: "0px 0px 0px 0px",
-            ease: "power2.inOut",
-            scrollTrigger: {
-              trigger: pinStageRef.current,
-              start: "top top",
-              end: "+=70%",
-              pin: true,
-              scrub: 1,
-              invalidateOnRefresh: true,
-            },
-          }
-        );
-      });
-
       return () => mm.revert();
     },
     { scope: sectionRef }
@@ -160,7 +135,7 @@ export function HeroSection() {
     >
       <div
         ref={pinStageRef}
-        className="relative h-screen w-full overflow-hidden flex items-center justify-center bg-obsidian pt-20 pb-28 sm:pb-24"
+        className="relative min-h-[100svh] md:h-screen w-full overflow-hidden flex flex-col md:flex-row items-center justify-between md:justify-center bg-obsidian pt-20 pb-6 md:pt-20 md:pb-24 px-4 sm:px-6 md:px-0 gap-5 md:gap-0"
       >
         {/* Subtle Architectural Grid Backdrop Surrounding the Keyhole */}
         <div
@@ -168,31 +143,41 @@ export function HeroSection() {
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(212,175,55,0.06)_0%,rgba(14,13,12,0)_62%)]"
         />
 
-        {/* Top-Left Split Wordmark */}
+        {/* Top Split Wordmark (flows naturally at top on mobile, pinned left on tablet/desktop) */}
         <div
           ref={titleLeftRef}
-          className="pointer-events-none absolute top-24 sm:top-28 left-5 sm:left-12 z-20 select-none"
+          className="w-full md:w-auto md:pointer-events-none md:absolute md:top-28 md:left-12 z-20 select-none flex items-end justify-between md:block pt-2 md:pt-0"
         >
-          <p className="font-syne text-[10px] sm:text-xs uppercase tracking-[0.34em] text-brass/90 mb-2">
-            01 / Banani Rooftop • Level 14
-          </p>
-          <h1 className="font-display text-4xl sm:text-6xl lg:text-[5.1rem] tracking-[0.22em] text-cream leading-none">
-            RESERVE
-          </h1>
-          <p className="mt-3 max-w-xs font-sans text-xs sm:text-sm font-light text-sand/85 leading-relaxed hidden md:block">
-            Architect-drawn skyline tables, white-oak ember dining, and live two-phase seat locking.
-          </p>
+          <div>
+            <p className="font-syne text-[9.5px] sm:text-xs uppercase tracking-[0.28em] sm:tracking-[0.34em] text-brass/90 mb-1.5 sm:mb-2">
+              01 / Banani Rooftop • Level 14
+            </p>
+            <h1 className="font-display text-3xl sm:text-5xl lg:text-[5.1rem] tracking-[0.2em] sm:tracking-[0.22em] text-cream leading-none">
+              RESERVE
+            </h1>
+            <p className="mt-3 max-w-xs font-sans text-xs sm:text-sm font-light text-sand/85 leading-relaxed hidden md:block">
+              Architect-drawn skyline tables, white-oak ember dining, and live two-phase seat locking.
+            </p>
+          </div>
+          <div className="md:hidden text-right">
+            <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-brass/80">
+              44–66 dB
+            </p>
+            <div className="font-serif italic text-3xl text-brass leading-none">
+              Perspective
+            </div>
+          </div>
         </div>
 
-        {/* Bottom-Right Split Wordmark */}
+        {/* Bottom-Right Split Wordmark (tablet & desktop overlay) */}
         <div
           ref={titleRightRef}
-          className="pointer-events-none absolute bottom-32 sm:bottom-36 right-5 sm:right-12 z-20 text-right select-none"
+          className="hidden md:block pointer-events-none absolute bottom-36 right-12 z-20 text-right select-none"
         >
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-brass/80 mb-1">
             44 dB — 66 dB Metered Sightlines
           </p>
-          <div className="font-serif italic text-5xl sm:text-7xl lg:text-[6rem] text-brass leading-[0.88] tracking-tight">
+          <div className="font-serif italic text-6xl lg:text-[6rem] text-brass leading-[0.88] tracking-tight">
             Perspective
           </div>
         </div>
@@ -200,12 +185,7 @@ export function HeroSection() {
         {/* Viewport-Masking Architectural Keyhole Frame */}
         <div
           ref={apertureRef}
-          className="relative z-10 overflow-hidden border border-brass/35 bg-charcoal shadow-[0_32px_90px_rgba(0,0,0,0.88)] will-change-[width,height,border-radius]"
-          style={{
-            width: "48vw",
-            height: "62vh",
-            borderRadius: "260px 260px 6px 6px",
-          }}
+          className="relative z-10 overflow-hidden border border-brass/35 bg-charcoal shadow-[0_32px_90px_rgba(0,0,0,0.88)] will-change-[width,height,border-radius] w-full max-w-[330px] sm:max-w-[380px] h-[38vh] min-h-[260px] rounded-t-[180px] rounded-b-[6px] md:max-w-none md:w-[48vw] md:h-[62vh] md:rounded-t-[260px]"
         >
           <video
             autoPlay
@@ -249,7 +229,7 @@ export function HeroSection() {
         </div>
 
         {/* Architectural 1px Brass Hairline Quick Booking Bar */}
-        <div className="absolute bottom-5 sm:bottom-7 inset-x-0 z-30 px-4 sm:px-8">
+        <div className="w-full md:absolute md:bottom-7 md:inset-x-0 z-30 md:px-8">
           <form
             ref={bookingBarRef}
             onSubmit={handleFindSeats}

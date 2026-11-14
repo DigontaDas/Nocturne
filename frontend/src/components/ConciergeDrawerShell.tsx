@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, ReactNode, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import {
+  fetchConciergeStatus,
   formatBdt,
   getOrCreateSessionId,
   holdTable,
@@ -28,11 +29,139 @@ import { useReservationContext } from "@/context/ReservationContext";
 import {
   ConciergeCardPayload,
   ConciergeCitation,
+  ConciergeLlmStatus,
   ConciergeTrace,
 } from "@/types/nocturne";
 
 const SAMPLE_PROMPT =
   "Looking for a quiet table away from the kitchen for 2 tonight, plus a dairy-free main dish and mocktail pairing under ৳3,500";
+
+function stripTrailingIncompleteMarkdown(raw: string): string {
+  // Trim trailing unmatched ** or * while tokens are streaming so raw asterisks never flicker
+  let clean = raw;
+  const boldPairs = (clean.match(/\*\*/g) || []).length;
+  if (boldPairs % 2 === 1) {
+    const last = clean.lastIndexOf("**");
+    if (last >= 0) clean = clean.slice(0, last) + clean.slice(last + 2);
+  }
+  const singleAsterisks = clean.replace(/\*\*/g, "").match(/\*/g)?.length || 0;
+  if (singleAsterisks % 2 === 1) {
+    const lastSingle = clean.lastIndexOf("*");
+    if (lastSingle >= 0) clean = clean.slice(0, lastSingle) + clean.slice(lastSingle + 1);
+  }
+  return clean;
+}
+
+function renderInlineMarkdown(text: string): ReactNode[] {
+  const normalized = stripTrailingIncompleteMarkdown(text);
+  const tokenRegex = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+§[^\]]+\])/g;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let keyIdx = 0;
+
+  while ((match = tokenRegex.exec(normalized)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(normalized.slice(lastIndex, match.index));
+    }
+    const token = match[0];
+    if (token.startsWith("**") && token.endsWith("**")) {
+      parts.push(
+        <strong key={keyIdx++} className="font-semibold text-cream">
+          {token.slice(2, -2)}
+        </strong>
+      );
+    } else if (token.startsWith("*") && token.endsWith("*")) {
+      parts.push(
+        <em key={keyIdx++} className="font-serif italic text-[15px] text-brass-soft">
+          {token.slice(1, -1)}
+        </em>
+      );
+    } else if (token.startsWith("`") && token.endsWith("`")) {
+      parts.push(
+        <code
+          key={keyIdx++}
+          className="px-1.5 py-0.5 mx-0.5 bg-charcoal border border-brass/30 font-mono text-[11px] text-brass"
+        >
+          {token.slice(1, -1)}
+        </code>
+      );
+    } else if (token.startsWith("[") && token.endsWith("]")) {
+      parts.push(
+        <span
+          key={keyIdx++}
+          className="inline-flex items-center px-1.5 py-0.5 mx-0.5 bg-brass/10 border border-brass/25 font-mono text-[10px] text-brass/95 whitespace-nowrap align-baseline"
+        >
+          {token.slice(1, -1)}
+        </span>
+      );
+    } else {
+      parts.push(token);
+    }
+    lastIndex = match.index + token.length;
+  }
+
+  if (lastIndex < normalized.length) {
+    parts.push(normalized.slice(lastIndex));
+  }
+
+  return parts.map((node, i) => <Fragment key={i}>{node}</Fragment>);
+}
+
+function EditorialMarkdown({ content }: { content: string }) {
+  const lines = content.split(/\r?\n/);
+
+  return (
+    <div className="space-y-2.5 text-[13.5px] leading-relaxed text-sand/95 font-sans font-light">
+      {lines.map((rawLine, idx) => {
+        const line = rawLine.trim();
+        if (!line) {
+          return <div key={idx} className="h-0.5" />;
+        }
+
+        // Heading syntax (### Title or standalone **Heading Line**)
+        const headingMatch = line.match(/^#{1,4}\s+(.+)$/);
+        const standaloneBoldHeading =
+          !line.startsWith("-") &&
+          !line.startsWith("*") &&
+          line.startsWith("**") &&
+          line.endsWith("**") &&
+          line.indexOf("**", 2) === line.length - 2;
+
+        if (headingMatch || standaloneBoldHeading) {
+          const titleText = headingMatch
+            ? headingMatch[1]
+            : line.slice(2, -2);
+          return (
+            <div
+              key={idx}
+              className="pt-1.5 first:pt-0 pb-1 border-b border-brass/20 font-syne text-[11px] font-bold uppercase tracking-[0.16em] text-brass"
+            >
+              {renderInlineMarkdown(titleText)}
+            </div>
+          );
+        }
+
+        // Unordered or numbered list item
+        const bulletMatch = line.match(/^(?:[-*•]|\d+\.)\s+(.+)$/);
+        if (bulletMatch) {
+          return (
+            <div key={idx} className="flex items-start gap-2.5 pl-0.5">
+              <span className="mt-[7px] w-1.5 h-1.5 rotate-45 bg-brass shrink-0" />
+              <div className="min-w-0 flex-1">{renderInlineMarkdown(bulletMatch[1])}</div>
+            </div>
+          );
+        }
+
+        return (
+          <p key={idx} className="text-cream/90">
+            {renderInlineMarkdown(line)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
 
 interface ChatTurn {
   id: string;
@@ -72,13 +201,30 @@ export function ConciergeDrawerShell() {
   const [showTraces, setShowTraces] = useState<boolean>(true);
   const [actionSuccessId, setActionSuccessId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [llmStatus, setLlmStatus] = useState<ConciergeLlmStatus | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const scrollEndRef = useRef<HTMLDivElement | null>(null);
+  const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   const sendPromptRef = useRef<(promptText: string) => Promise<void>>(async () => {});
 
   useEffect(() => {
-    scrollEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollAreaRef.current;
+    if (!el) return;
+    // Scroll ONLY the inner chat viewport so outer document scroll position stays pinned
+    el.scrollTop = el.scrollHeight;
   }, [messages, conciergeOpen]);
+
+  useEffect(() => {
+    if (!conciergeOpen) return;
+    let active = true;
+    fetchConciergeStatus()
+      .then((res) => {
+        if (active) setLlmStatus(res);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [conciergeOpen]);
 
   useEffect(() => {
     if (conciergeOpen && pendingConciergePrompt && !isStreaming) {
@@ -268,7 +414,10 @@ export function ConciergeDrawerShell() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setConciergeOpen(false)}
-            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
+            data-lenis-prevent
+            onWheelCapture={(e) => e.stopPropagation()}
+            onTouchMoveCapture={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm touch-none"
           />
 
           <motion.aside
@@ -276,12 +425,17 @@ export function ConciergeDrawerShell() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", stiffness: 280, damping: 28 }}
-            className="fixed top-0 right-0 bottom-0 z-50 w-full max-w-lg bg-charcoal border-l border-brass/30 flex flex-col justify-between shadow-card"
+            data-lenis-prevent
+            data-lenis-prevent-wheel
+            data-lenis-prevent-touch
+            onWheelCapture={(e) => e.stopPropagation()}
+            onTouchMoveCapture={(e) => e.stopPropagation()}
+            className="fixed top-0 right-0 bottom-0 z-50 w-full max-w-lg h-[100dvh] bg-charcoal border-l border-brass/30 flex flex-col justify-between shadow-card overscroll-contain"
           >
             {/* Header with Chef / Sommelier Portrait Avatar */}
-            <div className="px-6 py-4 border-b border-brass/15 bg-obsidian/70 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="relative w-11 h-11 rounded-full overflow-hidden ring-1 ring-brass/50 shrink-0">
+            <div className="px-4 sm:px-6 py-4 border-b border-brass/15 bg-obsidian/80 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden ring-1 ring-brass/50 shrink-0">
                   <img
                     src="/media/chef-concierge.jpg"
                     alt="Nocturne Culinary Concierge"
@@ -289,12 +443,15 @@ export function ConciergeDrawerShell() {
                   />
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-sage ring-2 ring-obsidian" />
                 </div>
-                <div>
-                  <h2 className="font-display text-lg uppercase tracking-[0.12em] text-cream leading-none">
+                <div className="min-w-0">
+                  <h2 className="font-display text-base sm:text-lg uppercase tracking-[0.12em] text-cream leading-none truncate">
                     Culinary Concierge
                   </h2>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-brass mt-1.5">
-                    SQL + pgvector Hybrid RAG &bull; {selectedSlot} ({partySize}P)
+                  <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-brass mt-1.5 truncate">
+                    {llmStatus?.live_llm
+                      ? `${llmStatus.provider} (${llmStatus.model})`
+                      : "SQL + pgvector Hybrid RAG"}{" "}
+                    &bull; {selectedSlot} ({partySize}P)
                   </p>
                 </div>
               </div>
@@ -303,14 +460,22 @@ export function ConciergeDrawerShell() {
                 type="button"
                 onClick={() => setConciergeOpen(false)}
                 aria-label="Close concierge drawer"
-                className="p-2 border border-brass/30 text-sand hover:text-cream hover:border-brass transition-colors"
+                className="p-2 border border-brass/30 text-sand hover:text-cream hover:border-brass transition-colors shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Scrollable Conversation Feed */}
-            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+            {/* Scrollable Conversation Feed (strictly isolated from Lenis & window scroll) */}
+            <div
+              ref={scrollAreaRef}
+              data-lenis-prevent
+              data-lenis-prevent-wheel
+              data-lenis-prevent-touch
+              onWheelCapture={(e) => e.stopPropagation()}
+              onTouchMoveCapture={(e) => e.stopPropagation()}
+              className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-5 py-5 space-y-5"
+            >
               {/* Quick Prompt Suggestion */}
               {messages.length <= 1 && (
                 <button
@@ -384,9 +549,16 @@ export function ConciergeDrawerShell() {
                         </div>
                       )}
 
-                      {/* Streamed Markdown Copy */}
-                      <div className="rounded-2xl rounded-bl-sm bg-obsidian/90 border border-brass/20 px-4 py-3.5 text-sm text-cream/95 leading-relaxed whitespace-pre-line">
-                        {msg.content || (isStreaming ? "Thinking..." : "")}
+                      {/* Formatted Editorial Markdown Response */}
+                      <div className="rounded-2xl rounded-bl-sm bg-obsidian/92 border border-brass/25 px-4 py-3.5">
+                        {msg.content ? (
+                          <EditorialMarkdown content={msg.content} />
+                        ) : (
+                          <span className="inline-flex items-center gap-2 text-xs font-mono text-brass/80">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Consulting SQL tables &amp; chef notes...
+                          </span>
+                        )}
                       </div>
 
                       {/* Policy & Allergen Citation Pills */}
@@ -501,7 +673,6 @@ export function ConciergeDrawerShell() {
                   )}
                 </div>
               ))}
-              <div ref={scrollEndRef} />
             </div>
 
             {/* Bottom Prompt Input */}
@@ -510,7 +681,7 @@ export function ConciergeDrawerShell() {
                 e.preventDefault();
                 void sendPrompt(input);
               }}
-              className="p-4 border-t border-brass/20 bg-obsidian/85"
+              className="p-3.5 sm:p-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] border-t border-brass/20 bg-obsidian/90 shrink-0"
             >
               <div className="flex items-center gap-2 bg-charcoal border border-brass/30 focus-within:border-brass pl-4 pr-1.5 py-1.5">
                 <input

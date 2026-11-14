@@ -133,6 +133,16 @@ class Reservation(Base):
     pre_order_total_bdt: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False, default=Decimal("0.00")
     )
+    payment_status: Mapped[str] = mapped_column(
+        String(24), nullable=False, default="UNPAID", server_default="UNPAID"
+    )
+    payment_method: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    payment_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    payment_reference: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    paid_amount_bdt: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=Decimal("0.00"), server_default="0.00"
+    )
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -143,6 +153,45 @@ class Reservation(Base):
         back_populates="reservation",
         cascade="all, delete-orphan",
     )
+    payments: Mapped[list[PaymentTransaction]] = relationship(
+        back_populates="reservation",
+        cascade="all, delete-orphan",
+    )
+
+
+class PaymentTransaction(Base):
+    __tablename__ = "payment_transactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    reservation_id: Mapped[int] = mapped_column(
+        ForeignKey("reservations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    gateway: Mapped[str] = mapped_column(String(24), nullable=False)
+    mode: Mapped[str] = mapped_column(String(24), nullable=False, default="gateway")
+    merchant_invoice_no: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    gateway_payment_id: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, index=True
+    )
+    gateway_trx_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    amount_bdt: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(8), nullable=False, default="BDT")
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="PENDING")
+    raw_payload: Mapped[dict[str, Any]] = mapped_column(
+        JSONVariant, nullable=False, default=dict
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    reservation: Mapped[Reservation] = relationship(back_populates="payments")
 
 
 class ReservationItem(Base):

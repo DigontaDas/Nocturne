@@ -10,6 +10,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 TableShape = Literal["ROUND_2", "RECT_4", "BOOTH_6"]
 TableStatus = Literal["AVAILABLE", "HELD_BY_YOU", "HELD_BY_OTHERS", "BOOKED"]
 ReservationStatus = Literal["HELD", "CONFIRMED", "SEATED", "COMPLETED", "CANCELLED"]
+PaymentStatus = Literal["UNPAID", "PENDING", "PAID", "FAILED", "CANCELLED"]
+PaymentMethod = Literal["PAY_AT_VENUE", "BKASH", "CARD"]
+PaymentGateway = Literal["bkash", "card"]
 
 
 class DiningZoneOut(BaseModel):
@@ -118,6 +121,7 @@ class ReservationConfirmRequest(BaseModel):
     guest_phone: str = Field(min_length=6, max_length=32, examples=["+8801711000000"])
     party_size: int = Field(ge=1, le=12)
     special_occasion: str | None = Field(default=None, max_length=120)
+    payment_method: PaymentMethod = "PAY_AT_VENUE"
     items: list[ReservationItemIn] = Field(default_factory=list)
 
 
@@ -150,9 +154,62 @@ class ReservationOut(BaseModel):
     status: ReservationStatus
     special_occasion: str | None
     pre_order_total_bdt: Decimal
+    payable_amount_bdt: Decimal = Decimal("0.00")
+    payment_status: str = "UNPAID"
+    payment_method: str | None = None
+    payment_reference: str | None = None
+    paid_amount_bdt: Decimal = Decimal("0.00")
+    paid_at: datetime | None = None
     version: int
     created_at: datetime
     items: list[ReservationItemOut] = Field(default_factory=list)
+
+
+class GatewayStatusOut(BaseModel):
+    configured: bool
+    mode: Literal["gateway", "demo_simulation", "unconfigured"]
+
+
+class PaymentConfigOut(BaseModel):
+    bkash: GatewayStatusOut
+    card: GatewayStatusOut
+    demo_simulation_enabled: bool
+    table_deposit_bdt: int
+
+
+class PaymentInitRequest(BaseModel):
+    reference_code: str = Field(min_length=4, max_length=32)
+    gateway: PaymentGateway
+    return_origin: str | None = Field(default=None, max_length=300)
+
+
+class PaymentInitResponse(BaseModel):
+    reference_code: str
+    gateway: PaymentGateway
+    mode: Literal["gateway", "demo_simulation"]
+    payment_id: str
+    checkout_url: str
+    amount_bdt: Decimal
+    currency: str = "BDT"
+    merchant_invoice_no: str
+
+
+class PaymentVerifyRequest(BaseModel):
+    reference_code: str = Field(min_length=4, max_length=32)
+    gateway: PaymentGateway
+    payment_id: str = Field(min_length=2, max_length=128)
+    status: str | None = Field(default=None, max_length=64)
+
+
+class PaymentVerifyResponse(BaseModel):
+    reference_code: str
+    gateway: PaymentGateway
+    payment_status: str
+    payment_reference: str | None = None
+    paid_amount_bdt: Decimal = Decimal("0.00")
+    already_processed: bool = False
+    message: str
+    reservation: ReservationOut | None = None
 
 
 class ConciergeChatMessage(BaseModel):

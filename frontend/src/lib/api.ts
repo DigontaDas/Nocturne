@@ -1,9 +1,15 @@
 import {
   ConciergeCardPayload,
   ConciergeCitation,
+  ConciergeLlmStatus,
   ConciergeTrace,
   DiningZone,
   MenuItem,
+  PaymentConfigOut,
+  PaymentGateway,
+  PaymentInitResponse,
+  PaymentMethod,
+  PaymentVerifyResponse,
   ReservationOut,
   RestaurantTable,
   TableHoldResponse,
@@ -149,6 +155,7 @@ export async function confirmReservation(payload: {
   guest_phone: string;
   party_size: number;
   special_occasion?: string | null;
+  payment_method?: PaymentMethod;
   items: {
     menu_item_id: number;
     quantity: number;
@@ -168,6 +175,65 @@ export async function confirmReservation(payload: {
         : err?.detail?.message || `Reservation failed (${res.status})`;
     throw new Error(msg);
   }
+  return res.json();
+}
+
+export async function fetchPaymentConfig(): Promise<PaymentConfigOut> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/payments/config`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to load payment configuration (${res.status})`);
+  return res.json();
+}
+
+export async function initEarlyPayment(payload: {
+  reference_code: string;
+  gateway: PaymentGateway;
+  return_origin?: string;
+}): Promise<PaymentInitResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/payments/init`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const msg =
+      typeof err?.detail === "string"
+        ? err.detail
+        : err?.detail?.message || `Payment initiation failed (${res.status})`;
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+export async function verifyEarlyPayment(payload: {
+  reference_code: string;
+  gateway: PaymentGateway;
+  payment_id: string;
+  status?: string | null;
+}): Promise<PaymentVerifyResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/payments/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const msg =
+      typeof err?.detail === "string"
+        ? err.detail
+        : err?.detail?.message || `Payment verification failed (${res.status})`;
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+export async function fetchConciergeStatus(): Promise<ConciergeLlmStatus> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/concierge/status`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Concierge status unavailable (${res.status})`);
   return res.json();
 }
 
@@ -194,7 +260,7 @@ export interface ConciergeStreamHandlers {
   onCitation?: (citation: ConciergeCitation) => void;
   onToken?: (text: string) => void;
   onCards?: (cards: ConciergeCardPayload) => void;
-  onDone?: (meta: { ok: boolean; provider?: string }) => void;
+  onDone?: (meta: { ok: boolean; provider?: string; model?: string }) => void;
 }
 
 export async function streamConcierge(

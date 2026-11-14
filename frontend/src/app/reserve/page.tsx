@@ -297,11 +297,11 @@ function ReserveStudioContent() {
 
       {/* Zone Switcher Tabs + Vibe Overlay Toggle */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
           <button
             type="button"
             onClick={() => setActiveZoneSlug("all")}
-            className={`px-4 py-2 border font-syne text-[10px] uppercase tracking-[0.2em] transition-colors ${
+            className={`shrink-0 px-4 py-2 border font-syne text-[10px] uppercase tracking-[0.2em] transition-colors ${
               activeZoneSlug === "all"
                 ? "bg-brass border-brass text-obsidian font-bold"
                 : "bg-charcoal border-brass/25 text-sand hover:border-brass hover:text-cream"
@@ -314,7 +314,7 @@ function ReserveStudioContent() {
               key={zone.slug}
               type="button"
               onClick={() => setActiveZoneSlug(zone.slug)}
-              className={`px-4 py-2 border font-syne text-[10px] uppercase tracking-[0.2em] transition-colors flex items-center gap-2 ${
+              className={`shrink-0 px-4 py-2 border font-syne text-[10px] uppercase tracking-[0.2em] transition-colors flex items-center gap-2 ${
                 activeZoneSlug === zone.slug
                   ? "bg-brass border-brass text-obsidian font-bold"
                   : "bg-charcoal border-brass/25 text-sand hover:border-brass hover:text-cream"
@@ -328,7 +328,7 @@ function ReserveStudioContent() {
           ))}
         </div>
 
-        <div className="flex items-center gap-1 p-1 bg-charcoal border border-brass/25 self-start md:self-auto">
+        <div className="flex items-center gap-1 p-1 bg-charcoal border border-brass/25 self-start md:self-auto overflow-x-auto no-scrollbar max-w-full">
           <span className="font-syne text-[10px] uppercase tracking-[0.18em] text-sand px-2.5">
             Overlay:
           </span>
@@ -372,7 +372,7 @@ function ReserveStudioContent() {
 
       {/* Main 65% / 35% Split Canvas + Perspective Drawer */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-8 space-y-4">
           <FloorplanSvg
             tables={tables}
             activeZoneSlug={activeZoneSlug}
@@ -381,6 +381,69 @@ function ReserveStudioContent() {
             vibeOverlay={vibeOverlay}
             onSelectTable={(t) => void handleHoldTable(t)}
           />
+
+          {/* Mobile & Tablet Thumb-Friendly Quick Seat Strip */}
+          <div className="lg:hidden border border-brass/25 bg-charcoal/80 p-3.5">
+            <div className="flex items-center justify-between gap-2 mb-2.5">
+              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-brass">
+                Tap Seat Directly ({activeZoneSlug === "all" ? "All Wings" : activeZoneSlug})
+              </span>
+              <span className="font-mono text-[10px] text-sand/75">
+                Swipe horizontally &rarr;
+              </span>
+            </div>
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+              {tables
+                .filter((t) =>
+                  activeZoneSlug === "all" ? true : t.zone_slug === activeZoneSlug
+                )
+                .filter((t) => {
+                  if (vibeOverlay === "quiet") return t.noise_db <= 52;
+                  if (vibeOverlay === "window") return t.is_window_side;
+                  return true;
+                })
+                .map((t) => {
+                  const isMine = heldTable?.tableCode === t.table_code;
+                  const isSelected = selectedTableCode === t.table_code;
+                  const isUnavailable =
+                    (t.status === "BOOKED" || t.status === "HELD_BY_OTHERS") && !isMine;
+                  return (
+                    <button
+                      key={t.table_code}
+                      type="button"
+                      disabled={isUnavailable}
+                      onClick={() => void handleHoldTable(t)}
+                      className={`shrink-0 px-3 py-2 border text-left transition-colors min-w-[116px] ${
+                        isMine || isSelected
+                          ? "bg-brass/18 border-brass text-cream"
+                          : isUnavailable
+                            ? "bg-obsidian/45 border-brass/15 text-sand/45 opacity-60 cursor-not-allowed"
+                            : "bg-obsidian border-brass/25 text-sand hover:border-brass"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-xs font-bold text-brass">
+                          {t.table_code}
+                        </span>
+                        <span className="font-mono text-[10px] text-cream/80 tabular-nums">
+                          {t.capacity_max}P
+                        </span>
+                      </div>
+                      <div className="font-mono text-[10px] text-sand/80 mt-0.5 tabular-nums">
+                        {t.noise_db} dB &middot;{" "}
+                        {isMine
+                          ? "Held"
+                          : t.status === "BOOKED"
+                            ? "Booked"
+                            : t.status === "HELD_BY_OTHERS"
+                              ? "Held"
+                              : "Open"}
+                      </div>
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
         </div>
 
         <div className="lg:col-span-4">

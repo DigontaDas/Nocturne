@@ -8,8 +8,8 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any, AsyncIterator
 
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_core.tools import tool
+import httpx
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from redis.asyncio import Redis
 from sqlalchemy import Float, cast, func, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -340,15 +340,16 @@ def _build_deterministic_reply(
             "[Rooftop Seating SOP §1.2]",
         )
         lines.append(
-            f"**Recommended Table — `{top_table['table_code']}` ({top_table['zone_name']})**"
+            f"### Recommended Table — `{top_table['table_code']}` ({top_table['zone_name']})"
         )
         lines.append(
-            f"Available for **{intents.party_size} guests** on **{reservation_date.isoformat()}** at **{time_slot}** "
-            f"measured at **{top_table['noise_db']} dB** "
+            f"Available for **{intents.party_size} guests** on **{reservation_date.isoformat()}** at **{time_slot}**, "
+            f"metered at **{top_table['noise_db']} dB** "
             f"({'skyline window-side' if top_table['is_window_side'] else 'architectural gallery'}, "
             f"{'quiet conversation zone' if top_table['is_quiet_zone'] else 'lively hearth energy'}) "
-            f"{badge_seat}. *{top_table['vibe_notes']}*"
+            f"{badge_seat}."
         )
+        lines.append(f"*{top_table['vibe_notes']}*")
     else:
         lines.append(
             f"No tables currently match {intents.party_size} guests at {time_slot} on {reservation_date.isoformat()}."
@@ -364,7 +365,7 @@ def _build_deterministic_reply(
             "[Sommelier Pairing Guide §1.2]",
         )
         lines.append("")
-        lines.append("**Curated Dish & Zero-Proof Pairing**")
+        lines.append("### Curated Dish & Zero-Proof Pairing")
         for item in dishes:
             diet_tags: list[str] = []
             if item["is_dairy_free"]:
@@ -387,7 +388,7 @@ def _build_deterministic_reply(
         lines.append("")
         lines.append(
             f"**Pairing Total: ৳ {pairing_total_bdt:,}**{budget_note}. Prepared on isolated cast-iron & barware stations "
-            f"with zero butter, cream, or hidden dairy {badge_allergen} {badge_pair}."
+            f"for allergen safety {badge_allergen} {badge_pair}."
         )
 
     lines.append("")
@@ -397,32 +398,106 @@ def _build_deterministic_reply(
     return "\n".join(lines)
 
 
-async def _try_langchain_narrative(
-    payload: ConciergeStreamRequest,
-    tables: list[dict[str, Any]],
-    dishes: list[dict[str, Any]],
-    pairing_total_bdt: int,
-    citations: list[dict[str, Any]],
-) -> tuple[str, str] | None:
-    """Optionally polish narrative via LangChain Groq/OpenAI with bound tool schema."""
-    llm = None
-    provider = ""
+async def detect_concierge_llm_status() -> dict[str, Any]:
+    """Inspect active Llama / LLM configuration without blocking on unreachable hosts."""
+    if settings.GROQ_API_KEY.strip():
+        return {
+            "mode": "llama-groq",
+            "provider": "Groq Cloud Llama",
+            "model": settings.GROQ_MODEL.strip() or "llama-3.3-70b-versatile",
+            "live_llm": True,
+        }
+    if settings.LLAMA_API_KEY.strip() and settings.LLAMA_BASE_URL.strip():
+        return {
+            "mode": "llama-openai-compatible",
+            "provider": "Custom Llama Endpoint",
+            "model": settings.LLAMA_MODEL.strip(),
+            "live_llm": True,
+        }
+    ollama_base = settings.OLLAMA_BASE_URL.strip().rstrip("/")
+    if ollama_base:
+        try:
+            async with httpx.AsyncClient(timeout=0.55) as client:
+                resp = await client.get(f"{ollama_base}/api/tags")
+                if resp.status_code == 200:
+                    return {
+                        "mode": "llama-ollama",
+                        "provider": "Local Ollama Llama",
+                        "model": settings.OLLAMA_MODEL.strip() or "llama3.2",
+                        "live_llm": True,
+                    }
+        except Exception:
+            pass
+    if settings.OPENAI_API_KEY.strip():
+        return {
+            "mode": "openai",
+            "provider": "OpenAI",
+            "model": "gpt-4o-mini",
+            "live_llm": True,
+        }
+    return {
+        "mode": "hybrid-sql-pgvector",
+        "provider": "Grounded SQL + pgvector Synthesizer",
+        "model": "deterministic",
+        "live_llm": False,
+    }
 
+
+async def _resolve_llama_client() -> tuple[Any, str, str] | None:
+    """Resolve primary Llama client (Groq -> Custom Llama -> Local Ollama -> OpenAI)."""
     if settings.GROQ_API_KEY.strip():
         try:
             from langchain_groq import ChatGroq
 
+            model_name = settings.GROQ_MODEL.strip() or "llama-3.3-70b-versatile"
             llm = ChatGroq(
                 api_key=settings.GROQ_API_KEY.strip(),
-                model="llama-3.3-70b-versatile",
+                model=model_name,
                 temperature=0.2,
-                max_tokens=450,
+                max_tokens=520,
             )
-            provider = "langchain-groq"
+            return llm, "llama-groq", model_name
         except Exception:
-            llm = None
+            pass
 
-    if llm is None and settings.OPENAI_API_KEY.strip():
+    if settings.LLAMA_API_KEY.strip() and settings.LLAMA_BASE_URL.strip():
+        try:
+            from langchain_openai import ChatOpenAI
+
+            model_name = settings.LLAMA_MODEL.strip()
+            llm = ChatOpenAI(
+                api_key=settings.LLAMA_API_KEY.strip(),
+                base_url=settings.LLAMA_BASE_URL.strip(),
+                model=model_name,
+                temperature=0.2,
+                max_tokens=520,
+            )
+            return llm, "llama-openai-compatible", model_name
+        except Exception:
+            pass
+
+    ollama_base = settings.OLLAMA_BASE_URL.strip().rstrip("/")
+    if ollama_base:
+        try:
+            async with httpx.AsyncClient(timeout=0.55) as client:
+                ping = await client.get(f"{ollama_base}/api/tags")
+            if ping.status_code == 200:
+                from langchain_openai import ChatOpenAI
+
+                model_name = settings.OLLAMA_MODEL.strip() or "llama3.2"
+                llm = ChatOpenAI(
+                    api_key="ollama",
+                    base_url=f"{ollama_base}/v1",
+                    model=model_name,
+                    temperature=0.2,
+                    max_tokens=520,
+                    timeout=settings.OLLAMA_TIMEOUT_SECONDS * 15,
+                )
+                return llm, "llama-ollama", model_name
+        except Exception:
+            pass
+
+    if settings.OPENAI_API_KEY.strip():
         try:
             from langchain_openai import ChatOpenAI
 
@@ -430,29 +505,26 @@ async def _try_langchain_narrative(
                 api_key=settings.OPENAI_API_KEY.strip(),
                 model="gpt-4o-mini",
                 temperature=0.2,
-                max_tokens=450,
+                max_tokens=520,
             )
-            provider = "langchain-openai"
+            return llm, "openai", "gpt-4o-mini"
         except Exception:
-            llm = None
+            pass
 
-    if llm is None:
-        return None
+    return None
 
-    @tool("find_available_tables_sql")
-    def _lc_tables_tool(party_size: int = 2) -> str:
-        """Return verified live available tables from PostgreSQL + Redis."""
-        return json.dumps(tables[:3], default=str)
 
-    @tool("search_chef_knowledge_rag")
-    def _lc_rag_tool(query: str) -> str:
-        """Return retrieved chef allergen, SOP, and sommelier citations from pgvector."""
-        return json.dumps(citations, default=str)
-
-    llm_with_context = llm.bind_tools([_lc_tables_tool, _lc_rag_tool])
+def _build_llm_messages(
+    payload: ConciergeStreamRequest,
+    tables: list[dict[str, Any]],
+    dishes: list[dict[str, Any]],
+    pairing_total_bdt: int,
+    citations: list[dict[str, Any]],
+) -> list[Any]:
     context_blob = {
         "reservation_date": payload.reservation_date.isoformat(),
         "time_slot": payload.time_slot,
+        "party_size": payload.party_size,
         "available_tables": tables[:3],
         "selected_dishes": [
             {
@@ -471,21 +543,25 @@ async def _try_langchain_narrative(
     }
     sys_msg = SystemMessage(
         content=(
-            "You are the Nocturne Dhaka Flagship Culinary Concierge. "
-            "Answer concisely in Markdown citing ONLY facts, prices in BDT (৳), table codes, dB noise ratings, "
-            "and citation badges present in the JSON context below. Never invent dishes, prices, or policies.\n"
-            f"VERIFIED CONTEXT:\n{json.dumps(context_blob)}"
+            "You are the Nocturne Dhaka Flagship Culinary Concierge at Banani Road 11 (Level 14).\n"
+            "Write a refined, scannable hospitality recommendation grounded strictly in VERIFIED CONTEXT below.\n"
+            "Formatting rules:\n"
+            "- Use clean headings like `### Recommended Table — T-04` and `### Curated Dish & Zero-Proof Pairing`.\n"
+            "- Use clean markdown bullets `- **Dish Name** — **৳ 2,450** (...)`.\n"
+            "- Include exact BDT (`৳`) prices, table codes, metered dB ratings, and citation badges from `citations`.\n"
+            "- Never invent dishes, prices, availability, or policies not present in VERIFIED CONTEXT.\n"
+            "- End by letting the guest know they can tap **Hold Table & Add Pairing** below.\n\n"
+            f"VERIFIED CONTEXT:\n{json.dumps(context_blob, default=str)}"
         )
     )
-    user_msg = HumanMessage(content=payload.message)
-    try:
-        response = await llm_with_context.ainvoke([sys_msg, user_msg])
-        text = response.content if isinstance(response.content, str) else ""
-        if text.strip():
-            return text.strip(), provider
-    except Exception:
-        return None
-    return None
+    lc_messages: list[Any] = [sys_msg]
+    for turn in payload.history[-4:]:
+        if turn.role == "user":
+            lc_messages.append(HumanMessage(content=turn.content))
+        else:
+            lc_messages.append(AIMessage(content=turn.content))
+    lc_messages.append(HumanMessage(content=payload.message))
+    return lc_messages
 
 
 async def stream_concierge_response(
@@ -586,18 +662,34 @@ async def stream_concierge_response(
         },
     )
 
-    # 4. Generate Narrative via LangChain (Groq/OpenAI if configured) or Grounded Synthesizer
+    # 4. Stream live Llama response (Groq / Custom Llama / Local Ollama / OpenAI) or fall back to deterministic synthesizer
     provider = "hybrid-sql-pgvector"
-    lc_result = await _try_langchain_narrative(
-        payload=payload,
-        tables=tables,
-        dishes=dishes,
-        pairing_total_bdt=pairing_total_bdt,
-        citations=citations,
-    )
-    if lc_result is not None:
-        narrative, provider = lc_result
-    else:
+    model_name = "deterministic"
+    streamed_from_llm = False
+
+    resolved = await _resolve_llama_client()
+    if resolved is not None:
+        llm, llm_provider, llm_model = resolved
+        lc_messages = _build_llm_messages(
+            payload=payload,
+            tables=tables,
+            dishes=dishes,
+            pairing_total_bdt=pairing_total_bdt,
+            citations=citations,
+        )
+        try:
+            async for chunk in llm.astream(lc_messages):
+                token_text = chunk.content if isinstance(chunk.content, str) else ""
+                if token_text:
+                    streamed_from_llm = True
+                    yield _sse_event("token", {"text": token_text})
+            if streamed_from_llm:
+                provider = llm_provider
+                model_name = llm_model
+        except Exception:
+            streamed_from_llm = False
+
+    if not streamed_from_llm:
         narrative = _build_deterministic_reply(
             query=payload.message,
             intents=intents,
@@ -608,15 +700,14 @@ async def stream_concierge_response(
             reservation_date=payload.reservation_date,
             time_slot=payload.time_slot,
         )
-
-    words = narrative.split(" ")
-    chunk_size = 6
-    for idx in range(0, len(words), chunk_size):
-        piece = " ".join(words[idx : idx + chunk_size])
-        if idx + chunk_size < len(words):
-            piece += " "
-        yield _sse_event("token", {"text": piece})
-        await asyncio.sleep(0.005)
+        words = narrative.split(" ")
+        chunk_size = 6
+        for idx in range(0, len(words), chunk_size):
+            piece = " ".join(words[idx : idx + chunk_size])
+            if idx + chunk_size < len(words):
+                piece += " "
+            yield _sse_event("token", {"text": piece})
+            await asyncio.sleep(0.005)
 
     # 5. Structured Generative UI Card Payload
     yield _sse_event(
@@ -633,4 +724,4 @@ async def stream_concierge_response(
         },
     )
 
-    yield _sse_event("done", {"ok": True, "provider": provider})
+    yield _sse_event("done", {"ok": True, "provider": provider, "model": model_name})

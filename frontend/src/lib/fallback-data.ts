@@ -810,6 +810,12 @@ export const FALLBACK_BOOKING: ReservationOut = {
   status: "CONFIRMED",
   special_occasion: "Anniversary Sunset Dinner",
   pre_order_total_bdt: 3100,
+  payable_amount_bdt: 3100,
+  payment_status: "PAID",
+  payment_method: "BKASH",
+  payment_reference: "BKA-NOCTURNE-9941",
+  paid_amount_bdt: 3100,
+  paid_at: new Date().toISOString(),
   version: 1,
   created_at: new Date().toISOString(),
   items: [

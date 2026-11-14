@@ -1,23 +1,32 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   ArrowRight,
+  CreditCard,
   Minus,
   Plus,
   Search,
   ShieldCheck,
+  Smartphone,
   Sparkles,
   Trash2,
   UtensilsCrossed,
+  Wallet,
 } from "lucide-react";
-import { confirmReservation, formatBdt, getOrCreateSessionId } from "@/lib/api";
+import {
+  confirmReservation,
+  fetchPaymentConfig,
+  formatBdt,
+  getOrCreateSessionId,
+  initEarlyPayment,
+} from "@/lib/api";
 import { useReservationContext } from "@/context/ReservationContext";
 import { PlanetaryDishWheel } from "@/components/PlanetaryDishWheel";
-import { MenuItem } from "@/types/nocturne";
+import { MenuItem, PaymentConfigOut, PaymentMethod } from "@/types/nocturne";
 
 interface MenuCustomizerSectionProps {
   menuItems: MenuItem[];
@@ -52,8 +61,24 @@ export function MenuCustomizerSection({
   const [guestName, setGuestName] = useState<string>("");
   const [guestPhone, setGuestPhone] = useState<string>("+8801711000000");
   const [specialOccasion, setSpecialOccasion] = useState<string>("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("PAY_AT_VENUE");
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfigOut | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetchPaymentConfig()
+      .then((cfg) => {
+        if (active) setPaymentConfig(cfg);
+      })
+      .catch(() => {
+        // Optional payment capability probe; defaults remain usable
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filteredMenu = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -85,6 +110,10 @@ export function MenuCustomizerSection({
     (sum, item) => sum + item.proteinGrams * item.quantity,
     0
   );
+  const earlyPayAmountBdt =
+    traySubtotalBdt > 0
+      ? traySubtotalBdt
+      : (paymentConfig?.table_deposit_bdt ?? 1000);
 
   const handleConfirmBooking = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,6 +147,7 @@ export function MenuCustomizerSection({
         guest_phone: guestPhone.trim(),
         party_size: partySize,
         special_occasion: specialOccasion.trim() || null,
+        payment_method: paymentMethod,
         items: trayItems.map((item) => ({
           menu_item_id: item.menuItem.id,
           quantity: item.quantity,
@@ -126,6 +156,23 @@ export function MenuCustomizerSection({
       });
       setHeldTable(null);
       clearTray();
+
+      if (paymentMethod === "BKASH" || paymentMethod === "CARD") {
+        try {
+          const gateway = paymentMethod === "BKASH" ? "bkash" : "card";
+          const session = await initEarlyPayment({
+            reference_code: ticket.reference_code,
+            gateway,
+            return_origin: window.location.origin,
+          });
+          window.location.assign(session.checkout_url);
+          return;
+        } catch {
+          router.push(`/booking/${ticket.reference_code}?pay_prompt=1`);
+          return;
+        }
+      }
+
       router.push(`/booking/${ticket.reference_code}`);
     } catch (err) {
       setConfirmError(
@@ -263,7 +310,12 @@ export function MenuCustomizerSection({
                 </button>
               </div>
             ) : (
-              <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+              <div
+                data-lenis-prevent
+                data-lenis-prevent-wheel
+                data-lenis-prevent-touch
+                className="space-y-3 max-h-72 overflow-y-auto overscroll-contain pr-1"
+              >
                 {trayItems.map((item) => (
                   <div
                     key={item.key}
@@ -435,6 +487,75 @@ export function MenuCustomizerSection({
                 </div>
               </div>
 
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <label className="font-syne text-[10px] uppercase tracking-[0.22em] text-sand">
+                    Settlement Timing
+                  </label>
+                  <span className="font-mono text-[10px] text-brass">
+                    {paymentMethod === "PAY_AT_VENUE"
+                      ? "Settle at Table"
+                      : `${traySubtotalBdt > 0 ? "Pre-Order" : "Deposit"} ${formatBdt(earlyPayAmountBdt)}`}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("PAY_AT_VENUE")}
+                    className={`p-2.5 border text-left transition-colors ${
+                      paymentMethod === "PAY_AT_VENUE"
+                        ? "border-brass bg-brass/12 text-cream"
+                        : "border-brass/20 bg-obsidian/70 text-sand hover:border-brass/45"
+                    }`}
+                  >
+                    <Wallet className="w-3.5 h-3.5 text-brass mb-1.5" />
+                    <div className="font-syne text-[10px] font-bold uppercase tracking-[0.12em]">
+                      At Venue
+                    </div>
+                    <div className="font-mono text-[9px] text-sand/70 mt-0.5">
+                      Pay on night
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("BKASH")}
+                    className={`p-2.5 border text-left transition-colors ${
+                      paymentMethod === "BKASH"
+                        ? "border-brass bg-brass/12 text-cream"
+                        : "border-brass/20 bg-obsidian/70 text-sand hover:border-brass/45"
+                    }`}
+                  >
+                    <Smartphone className="w-3.5 h-3.5 text-brass mb-1.5" />
+                    <div className="font-syne text-[10px] font-bold uppercase tracking-[0.12em]">
+                      bKash
+                    </div>
+                    <div className="font-mono text-[9px] text-sand/70 mt-0.5">
+                      {paymentConfig?.bkash.configured ? "Live Gateway" : "Sandbox"}
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("CARD")}
+                    className={`p-2.5 border text-left transition-colors ${
+                      paymentMethod === "CARD"
+                        ? "border-brass bg-brass/12 text-cream"
+                        : "border-brass/20 bg-obsidian/70 text-sand hover:border-brass/45"
+                    }`}
+                  >
+                    <CreditCard className="w-3.5 h-3.5 text-brass mb-1.5" />
+                    <div className="font-syne text-[10px] font-bold uppercase tracking-[0.12em]">
+                      Card
+                    </div>
+                    <div className="font-mono text-[9px] text-sand/70 mt-0.5">
+                      {paymentConfig?.card.configured ? "Visa · MC" : "Sandbox"}
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               <button
                 type="submit"
                 disabled={submitting}
@@ -444,7 +565,11 @@ export function MenuCustomizerSection({
                 <span>
                   {submitting
                     ? "Confirming Lock & Issuing Pass..."
-                    : "Confirm Reservation & Issue Pass"}
+                    : paymentMethod === "BKASH"
+                      ? `Confirm & Pay ${formatBdt(earlyPayAmountBdt)} via bKash`
+                      : paymentMethod === "CARD"
+                        ? `Confirm & Pay ${formatBdt(earlyPayAmountBdt)} by Card`
+                        : "Confirm Reservation & Issue Pass"}
                 </span>
                 <ArrowRight className="w-4 h-4" />
               </button>

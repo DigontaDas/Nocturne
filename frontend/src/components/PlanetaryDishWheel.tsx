@@ -241,35 +241,40 @@ export function PlanetaryDishWheel({
     }
   }, [initialDishSlug, safeDishes, targetCursor]);
 
-  // GSAP ScrollTrigger pinning when mode="pinned" on landing page
+  // GSAP ScrollTrigger pinning when mode="pinned" on desktop (>= 1024px) only
   useGSAP(
     () => {
       if (mode !== "pinned" || !pinSectionRef.current || safeDishes.length <= 1) {
         return;
       }
 
-      const maxScrollSteps = Math.min(6, Math.max(1, safeDishes.length - 1));
-      const st = ScrollTrigger.create({
-        trigger: pinSectionRef.current,
-        start: "top top",
-        end: () => `+=${maxScrollSteps * 260}`,
-        pin: true,
-        scrub: 1.1,
-        anticipatePin: 1,
-        invalidateOnRefresh: true,
-        onUpdate: (self) => {
-          if (dragRef.current.active) return;
-          const stepFloat = self.progress * maxScrollSteps;
-          scrollStepsRef.current = stepFloat;
-          const total = stepFloat + manualOffsetRef.current;
-          targetCursor.set(total);
-          syncActiveIndex(total, count);
-        },
+      const mm = gsap.matchMedia();
+      mm.add("(min-width: 1024px)", () => {
+        const maxScrollSteps = Math.min(6, Math.max(1, safeDishes.length - 1));
+        const st = ScrollTrigger.create({
+          trigger: pinSectionRef.current,
+          start: "top top",
+          end: () => `+=${maxScrollSteps * 260}`,
+          pin: true,
+          scrub: 1.1,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+          onUpdate: (self) => {
+            if (dragRef.current.active) return;
+            const stepFloat = self.progress * maxScrollSteps;
+            scrollStepsRef.current = stepFloat;
+            const total = stepFloat + manualOffsetRef.current;
+            targetCursor.set(total);
+            syncActiveIndex(total, count);
+          },
+        });
+
+        return () => {
+          st.kill();
+        };
       });
 
-      return () => {
-        st.kill();
-      };
+      return () => mm.revert();
     },
     { scope: pinSectionRef, dependencies: [mode, count] }
   );
@@ -384,22 +389,27 @@ export function PlanetaryDishWheel({
     }, 1800);
   };
 
+  const prevDish =
+    safeDishes[(activeIndex - 1 + safeDishes.length) % safeDishes.length] ?? activeDish;
+  const nextDish =
+    safeDishes[(activeIndex + 1) % safeDishes.length] ?? activeDish;
+
   if (!activeDish) return null;
 
   return (
     <section
       ref={pinSectionRef}
-      className="relative w-full h-[880px] overflow-hidden flex flex-col items-center justify-start pt-12 bg-obsidian text-cream border-t border-brass/15 select-none"
+      className="relative w-full min-h-[700px] md:min-h-[820px] lg:h-[880px] overflow-hidden flex flex-col items-center justify-start pt-10 md:pt-12 pb-12 md:pb-0 bg-obsidian text-cream border-t border-brass/15 select-none"
     >
       {/* Subtle Radial Warm Glow Behind the 12 O'Clock Plate Apex */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute top-[210px] left-1/2 -translate-x-1/2 w-[520px] h-[520px] rounded-full bg-[radial-gradient(circle,rgba(212,175,55,0.09)_0%,rgba(14,13,12,0)_70%)]"
+        className="pointer-events-none absolute top-[180px] md:top-[210px] left-1/2 -translate-x-1/2 w-[340px] sm:w-[520px] h-[340px] sm:h-[520px] rounded-full bg-[radial-gradient(circle,rgba(212,175,55,0.09)_0%,rgba(14,13,12,0)_70%)]"
       />
 
       {/* TOP HALF OF STAGE: Centered Header, Category Tabs, and Primary Actions Above Active Plate */}
       <header className="relative z-40 w-full max-w-5xl px-4 flex flex-col items-center text-center">
-        <div className="flex items-center gap-3 font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.28em] text-brass">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.24em] sm:tracking-[0.28em] text-brass">
           <span>{sectionLabel}</span>
           <span className="text-brass/40">/</span>
           <span className="tabular-nums text-cream/85">
@@ -418,11 +428,11 @@ export function PlanetaryDishWheel({
           {titlePrefix} {titleItalic}
         </h2>
 
-        {/* Centered Category Filter Tabs */}
+        {/* Scrollable on phones, wrapped cleanly on tablet/desktop */}
         <div
           role="tablist"
           aria-label="Menu Categories"
-          className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-b border-brass/20 pb-2.5"
+          className="mt-4 w-full max-w-full overflow-x-auto no-scrollbar flex items-center justify-start sm:justify-center sm:flex-wrap gap-x-5 gap-y-2 border-b border-brass/20 pb-2.5 px-1"
         >
           {WHEEL_CATEGORIES.map((category) => {
             const isSelected = activeCategory === category;
@@ -433,7 +443,7 @@ export function PlanetaryDishWheel({
                 role="tab"
                 aria-selected={isSelected}
                 onClick={() => handleCategoryChange(category)}
-                className={`relative pb-1 font-syne text-[10px] sm:text-[11px] uppercase tracking-[0.2em] transition-colors ${
+                className={`relative pb-1 whitespace-nowrap font-syne text-[10px] sm:text-[11px] uppercase tracking-[0.2em] transition-colors shrink-0 ${
                   isSelected
                     ? "text-brass font-bold"
                     : "text-sand/70 hover:text-cream"
@@ -453,12 +463,12 @@ export function PlanetaryDishWheel({
         </div>
 
         {/* Centered Quick Actions & Safety Badges Directly Above the 12 O'Clock Plate */}
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
           <button
             type="button"
             onClick={() => handleQuickAdd(activeDish)}
             data-cursor="RESERVE"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-brass hover:bg-brass-soft text-obsidian font-syne text-[10px] font-bold uppercase tracking-[0.2em] transition-colors"
+            className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-brass hover:bg-brass-soft text-obsidian font-syne text-[10px] font-bold uppercase tracking-[0.18em] sm:tracking-[0.2em] transition-colors"
           >
             {addedSlug === activeDish.slug ? (
               <>
@@ -466,14 +476,14 @@ export function PlanetaryDishWheel({
                 <span>Added to Sequence</span>
               </>
             ) : (
-              <span>+ Add to Table Sequence</span>
+              <span>+ Add to Sequence</span>
             )}
           </button>
 
           <button
             type="button"
             onClick={() => setCustomizerDish(activeDish)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 border border-brass/40 hover:border-brass bg-obsidian/80 text-cream font-syne text-[10px] uppercase tracking-[0.2em] transition-colors"
+            className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 border border-brass/40 hover:border-brass bg-obsidian/80 text-cream font-syne text-[10px] uppercase tracking-[0.18em] sm:tracking-[0.2em] transition-colors"
           >
             <SlidersHorizontal className="w-3.5 h-3.5 text-brass" />
             <span>Customize Dish</span>
@@ -488,33 +498,131 @@ export function PlanetaryDishWheel({
         </div>
       </header>
 
-      {/* SLEEK HORIZONTAL LONG ARROW CONTROLS ALIGNED WITH 12 O'CLOCK PLATE */}
+      {/* MOBILE CURVED SHOWCASE (< 768px) — zero clipping, responsive flanking plates */}
+      <div
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+        className="md:hidden relative w-full mt-8 px-4 flex flex-col items-center touch-pan-y"
+      >
+        <div className="relative w-full max-w-[360px] h-[240px] flex items-center justify-center overflow-hidden">
+          {safeDishes.length > 1 && (
+            <button
+              type="button"
+              onClick={() => stepBy(-1)}
+              aria-label={`Select previous: ${prevDish.name}`}
+              className="absolute -left-10 top-1/2 -translate-y-1/2 w-24 h-24 rounded-full overflow-hidden bg-obsidian border border-brass/25 opacity-45 hover:opacity-80 transition-opacity"
+            >
+              <img
+                src={prevDish.image_url}
+                alt={prevDish.name}
+                className="w-full h-full object-cover mix-blend-lighten"
+              />
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setCustomizerDish(activeDish)}
+            aria-label={`Customize ${activeDish.name}`}
+            className="relative z-20 w-52 h-52 sm:w-56 sm:h-56 rounded-full overflow-hidden bg-obsidian border border-brass/50 shadow-[0_24px_60px_rgba(0,0,0,0.92)]"
+          >
+            <img
+              src={activeDish.image_url}
+              alt={activeDish.name}
+              className="w-full h-full object-cover mix-blend-lighten scale-[1.06]"
+            />
+          </button>
+
+          {safeDishes.length > 1 && (
+            <button
+              type="button"
+              onClick={() => stepBy(1)}
+              aria-label={`Select next: ${nextDish.name}`}
+              className="absolute -right-10 top-1/2 -translate-y-1/2 w-24 h-24 rounded-full overflow-hidden bg-obsidian border border-brass/25 opacity-45 hover:opacity-80 transition-opacity"
+            >
+              <img
+                src={nextDish.image_url}
+                alt={nextDish.name}
+                className="w-full h-full object-cover mix-blend-lighten"
+              />
+            </button>
+          )}
+        </div>
+
+        {/* Sleek Prev / Next Touch Controls for Mobile */}
+        <div className="mt-4 flex items-center justify-center gap-8">
+          <button
+            type="button"
+            onClick={() => stepBy(-1)}
+            aria-label="Previous dish"
+            className="p-2 border border-brass/30 text-brass hover:border-brass transition-colors"
+          >
+            <svg viewBox="0 0 44 16" className="w-8 h-3.5" aria-hidden="true">
+              <line x1="42" y1="8" x2="3" y2="8" stroke="currentColor" strokeWidth="1.25" />
+              <polyline points="9,2 2,8 9,14" fill="none" stroke="currentColor" strokeWidth="1.25" />
+            </svg>
+          </button>
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-sand">
+            Swipe or Tap Plate
+          </span>
+          <button
+            type="button"
+            onClick={() => stepBy(1)}
+            aria-label="Next dish"
+            className="p-2 border border-brass/30 text-brass hover:border-brass transition-colors"
+          >
+            <svg viewBox="0 0 44 16" className="w-8 h-3.5" aria-hidden="true">
+              <line x1="2" y1="8" x2="41" y2="8" stroke="currentColor" strokeWidth="1.25" />
+              <polyline points="35,2 42,8 35,14" fill="none" stroke="currentColor" strokeWidth="1.25" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Mobile Dish Details */}
+        <div className="mt-5 w-full max-w-sm text-center space-y-2">
+          <div className="inline-flex items-center justify-center gap-2 font-syne text-[10px] uppercase tracking-[0.24em] text-brass border border-brass/30 bg-obsidian px-3 py-1">
+            <span>{activeDish.category}</span>
+            {activeDish.spice_level > 0 && (
+              <span className="inline-flex items-center gap-1 text-ember">
+                <Flame className="w-3 h-3" />
+                {activeDish.spice_level === 3 ? "NAGA" : `L${activeDish.spice_level}`}
+              </span>
+            )}
+          </div>
+          <h3 className="font-display text-2xl uppercase tracking-[0.06em] text-cream leading-tight">
+            {activeDish.name}
+          </h3>
+          <div className="font-mono text-xs tabular-nums text-sand flex flex-wrap justify-center gap-x-3 gap-y-1">
+            <span className="text-brass font-medium">{formatBdt(basePrice)}</span>
+            <span>&bull;</span>
+            <span>
+              {activeDish.calories_kcal} kcal &bull; {activeDish.protein_grams}g P &bull;{" "}
+              {activeDish.prep_time_mins}m
+            </span>
+          </div>
+          <p className="font-sans text-xs text-sand/85 font-light leading-relaxed pt-1">
+            {activeDish.description}
+          </p>
+        </div>
+      </div>
+
+      {/* DESKTOP / TABLET SLEEK HORIZONTAL LONG ARROW CONTROLS (md+) */}
       <button
         type="button"
         onClick={() => stepBy(-1)}
         data-cursor="SPIN"
         aria-label="Previous dish"
-        className="group absolute top-[395px] -translate-y-1/2 left-[6%] sm:left-[12%] z-40 flex items-center gap-2 py-3 px-2 text-brass/80 hover:text-brass transition-colors focus:outline-none"
+        className="hidden md:flex group absolute top-[395px] -translate-y-1/2 md:left-[6%] lg:left-[12%] z-40 items-center gap-2 py-3 px-2 text-brass/80 hover:text-brass transition-colors focus:outline-none"
       >
         <svg
           viewBox="0 0 88 20"
-          className="w-14 sm:w-20 h-5 overflow-visible transition-transform duration-300 group-hover:-translate-x-1.5"
+          className="w-14 lg:w-20 h-5 overflow-visible transition-transform duration-300 group-hover:-translate-x-1.5"
           aria-hidden="true"
         >
-          <line
-            x1="86"
-            y1="10"
-            x2="4"
-            y2="10"
-            stroke="currentColor"
-            strokeWidth="1.25"
-          />
-          <polyline
-            points="12,3 3,10 12,17"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.25"
-          />
+          <line x1="86" y1="10" x2="4" y2="10" stroke="currentColor" strokeWidth="1.25" />
+          <polyline points="12,3 3,10 12,17" fill="none" stroke="currentColor" strokeWidth="1.25" />
         </svg>
         <span className="sr-only">Previous</span>
       </button>
@@ -524,32 +632,20 @@ export function PlanetaryDishWheel({
         onClick={() => stepBy(1)}
         data-cursor="SPIN"
         aria-label="Next dish"
-        className="group absolute top-[395px] -translate-y-1/2 right-[6%] sm:right-[12%] z-40 flex items-center gap-2 py-3 px-2 text-brass/80 hover:text-brass transition-colors focus:outline-none"
+        className="hidden md:flex group absolute top-[395px] -translate-y-1/2 md:right-[6%] lg:right-[12%] z-40 items-center gap-2 py-3 px-2 text-brass/80 hover:text-brass transition-colors focus:outline-none"
       >
         <svg
           viewBox="0 0 88 20"
-          className="w-14 sm:w-20 h-5 overflow-visible transition-transform duration-300 group-hover:translate-x-1.5"
+          className="w-14 lg:w-20 h-5 overflow-visible transition-transform duration-300 group-hover:translate-x-1.5"
           aria-hidden="true"
         >
-          <line
-            x1="2"
-            y1="10"
-            x2="84"
-            y2="10"
-            stroke="currentColor"
-            strokeWidth="1.25"
-          />
-          <polyline
-            points="76,3 85,10 76,17"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.25"
-          />
+          <line x1="2" y1="10" x2="84" y2="10" stroke="currentColor" strokeWidth="1.25" />
+          <polyline points="76,3 85,10 76,17" fill="none" stroke="currentColor" strokeWidth="1.25" />
         </svg>
         <span className="sr-only">Next</span>
       </button>
 
-      {/* BOTTOM HALF OF STAGE: GIANT SUB-HORIZON WHEEL (1500px diameter, R = 750px, bottom = -1020px) */}
+      {/* DESKTOP / TABLET BOTTOM HALF OF STAGE: GIANT SUB-HORIZON WHEEL (md+) */}
       <div
         ref={stageRef}
         onPointerDown={handlePointerDown}
@@ -557,7 +653,7 @@ export function PlanetaryDishWheel({
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
         data-cursor="DRAG"
-        className="pointer-events-auto absolute left-1/2 -translate-x-1/2 bottom-[-1020px] w-[1500px] h-[1500px] cursor-grab active:cursor-grabbing"
+        className="hidden md:block pointer-events-auto absolute left-1/2 -translate-x-1/2 bottom-[-1020px] w-[1500px] h-[1500px] md:scale-[0.76] lg:scale-[0.9] xl:scale-100 origin-bottom cursor-grab active:cursor-grabbing"
       >
         {safeDishes.map((dish, idx) => (
           <ArchWheelPlate
@@ -572,8 +668,8 @@ export function PlanetaryDishWheel({
         ))}
       </div>
 
-      {/* CENTERED ANIMATED DISH READOUT BELOW THE ACTIVE 12 O'CLOCK PLATE (Between Left & Right Plates) */}
-      <div className="pointer-events-none absolute top-[612px] inset-x-0 z-40 flex justify-center px-4">
+      {/* DESKTOP / TABLET CENTERED ANIMATED DISH READOUT BELOW THE 12 O'CLOCK PLATE */}
+      <div className="hidden md:flex pointer-events-none absolute top-[612px] inset-x-0 z-40 justify-center px-4">
         <div className="w-full max-w-md text-center">
           <AnimatePresence mode="wait">
             <motion.div

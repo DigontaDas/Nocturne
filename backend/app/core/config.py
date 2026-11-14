@@ -33,9 +33,35 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
 
     GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    LLAMA_API_KEY: str = ""
+    LLAMA_BASE_URL: str = ""
+    LLAMA_MODEL: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
     OPENAI_API_KEY: str = ""
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3.2"
+    OLLAMA_TIMEOUT_SECONDS: float = 2.0
+
+    FRONTEND_URL: str = "http://localhost:3300"
+    TABLE_DEPOSIT_BDT: int = 1000
+
+    # bKash Tokenized Checkout (aligned with Clarity server/services/bkash.js)
+    BKASH_GRANT_URL: str = (
+        "https://tokenized.sandbox.bka.sh/v1.2.0-beta/tokenized/checkout/token/grant"
+    )
+    BKASH_BASE_URL: str = (
+        "https://tokenized.sandbox.bka.sh/v1.2.0-beta/tokenized/checkout"
+    )
+    BKASH_APP_KEY: str = ""
+    BKASH_APP_SECRET: str = ""
+    BKASH_USERNAME: str = ""
+    BKASH_PASSWORD: str = ""
+
+    # Card Payments via Stripe Checkout
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_CURRENCY: str = "bdt"
+
+    PAYMENT_ALLOW_DEMO_SIMULATION: bool = True
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

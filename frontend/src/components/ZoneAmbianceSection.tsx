@@ -68,31 +68,36 @@ export function ZoneAmbianceSection() {
     () => {
       if (!pinWrapperRef.current || !trackRef.current) return;
 
-      const tween = gsap.to(trackRef.current, {
-        xPercent: -66.666667,
-        ease: "none",
-        scrollTrigger: {
-          trigger: pinWrapperRef.current,
-          start: "top top",
-          end: () => `+=${Math.round(window.innerWidth * 2)}`,
-          pin: true,
-          scrub: 1,
-          anticipatePin: 1,
-          invalidateOnRefresh: true,
-          onUpdate: (self) => {
-            const idx = Math.min(
-              orderedZones.length - 1,
-              Math.floor(self.progress * orderedZones.length)
-            );
-            setActiveWing(idx);
+      const mm = gsap.matchMedia();
+      mm.add("(min-width: 1024px)", () => {
+        const tween = gsap.to(trackRef.current, {
+          xPercent: -66.666667,
+          ease: "none",
+          scrollTrigger: {
+            trigger: pinWrapperRef.current,
+            start: "top top",
+            end: () => `+=${Math.round(window.innerWidth * 2)}`,
+            pin: true,
+            scrub: 1,
+            anticipatePin: 1,
+            invalidateOnRefresh: true,
+            onUpdate: (self) => {
+              const idx = Math.min(
+                orderedZones.length - 1,
+                Math.floor(self.progress * orderedZones.length)
+              );
+              setActiveWing(idx);
+            },
           },
-        },
+        });
+
+        return () => {
+          tween.scrollTrigger?.kill();
+          tween.kill();
+        };
       });
 
-      return () => {
-        tween.scrollTrigger?.kill();
-        tween.kill();
-      };
+      return () => mm.revert();
     },
     { scope: sectionRef, dependencies: [orderedZones.length] }
   );
@@ -105,16 +110,16 @@ export function ZoneAmbianceSection() {
     >
       <div
         ref={pinWrapperRef}
-        className="relative h-screen w-full overflow-hidden flex flex-col"
+        className="relative lg:h-screen w-full lg:overflow-hidden flex flex-col"
       >
         {/* Top Architectural Wing Progress Telemetry Bar */}
-        <div className="absolute top-20 sm:top-24 inset-x-0 z-30 px-4 sm:px-10 pointer-events-none">
-          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4 border-b border-brass/25 pb-3 bg-obsidian/55 backdrop-blur-md px-4 py-2.5">
+        <div className="relative lg:absolute lg:top-24 lg:inset-x-0 z-30 px-4 sm:px-10 pt-10 pb-4 lg:p-0 lg:pointer-events-none">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4 border-b border-brass/25 pb-3 bg-obsidian/70 backdrop-blur-md px-4 py-2.5">
             <div className="flex items-center gap-3">
-              <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-brass">
+              <span className="font-mono text-[10px] uppercase tracking-[0.26em] sm:tracking-[0.3em] text-brass">
                 03 / Architectural Wings
               </span>
-              <span className="hidden sm:inline font-mono text-[10px] text-sand/70">
+              <span className="hidden lg:inline font-mono text-[10px] text-sand/70">
                 Scroll horizontally through {orderedZones.length} sensory environments
               </span>
             </div>
@@ -147,10 +152,10 @@ export function ZoneAmbianceSection() {
           </div>
         </div>
 
-        {/* Horizontal 300vw Full-Bleed Wing Track */}
+        {/* Stacked vertical cards on mobile/tablet (< 1024px); horizontal 300vw track on desktop */}
         <div
           ref={trackRef}
-          className="flex h-full w-[300vw] will-change-transform"
+          className="flex flex-col lg:flex-row lg:h-full w-full lg:w-[300vw] lg:will-change-transform"
         >
           {orderedZones.map((zone, index) => {
             const meta = WING_TELEMETRY[zone.slug] ?? {
@@ -164,7 +169,7 @@ export function ZoneAmbianceSection() {
             return (
               <article
                 key={zone.slug}
-                className="relative w-screen h-full shrink-0 overflow-hidden border-r border-brass/20 flex items-end"
+                className="relative w-full lg:w-screen min-h-[540px] sm:min-h-[600px] lg:min-h-0 lg:h-full shrink-0 overflow-hidden border-b lg:border-b-0 lg:border-r border-brass/20 flex items-end"
               >
                 {/* Full-Bleed Video Background */}
                 <video

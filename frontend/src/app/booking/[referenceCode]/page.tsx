@@ -1,26 +1,37 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { Suspense, use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
+  AlertTriangle,
   ArrowLeft,
   Calendar,
   CheckCircle2,
   Clock,
+  CreditCard,
   MapPin,
   ShieldCheck,
+  Smartphone,
   Sparkles,
   Users,
   UtensilsCrossed,
 } from "lucide-react";
 import {
   checkInReservation,
+  fetchPaymentConfig,
   fetchReservation,
   formatBdt,
+  initEarlyPayment,
+  verifyEarlyPayment,
 } from "@/lib/api";
 import { FALLBACK_BOOKING } from "@/lib/fallback-data";
-import { ReservationOut } from "@/types/nocturne";
+import {
+  PaymentConfigOut,
+  PaymentGateway,
+  ReservationOut,
+} from "@/types/nocturne";
 
 function QrPassSvg({ value }: { value: string }) {
   // Deterministic 21x21 QR-style matrix derived from booking payload
@@ -73,16 +84,32 @@ function QrPassSvg({ value }: { value: string }) {
   );
 }
 
-export default function BookingPassPage({
-  params,
+function BookingPassContent({
+  referenceCode,
 }: {
-  params: Promise<{ referenceCode: string }>;
+  referenceCode: string;
 }) {
-  const { referenceCode } = use(params);
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [booking, setBooking] = useState<ReservationOut | null>(null);
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfigOut | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [checkingIn, setCheckingIn] = useState(false);
+  const [payingGateway, setPayingGateway] = useState<PaymentGateway | null>(null);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
+  const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const processedCallbackRef = useRef<string | null>(null);
+
+  const demoCheckout = searchParams.get("demo_checkout") === "1";
+  const gatewayParam = searchParams.get("gateway");
+  const demoGateway: PaymentGateway | null =
+    gatewayParam === "bkash" || gatewayParam === "card" ? gatewayParam : null;
+  const demoPaymentId = searchParams.get("payment_id");
+  const bkashPaymentId = searchParams.get("paymentID");
+  const cardSessionId = searchParams.get("session_id");
+  const statusParam = searchParams.get("status");
 
   useEffect(() => {
     let active = true;
@@ -110,10 +137,140 @@ export default function BookingPassPage({
       }
     };
     void load();
+    fetchPaymentConfig()
+      .then((cfg) => {
+        if (active) setPaymentConfig(cfg);
+      })
+      .catch(() => {
+        // Optional gateway metadata
+      });
     return () => {
       active = false;
     };
   }, [referenceCode]);
+
+  useEffect(() => {
+    if (demoCheckout) return;
+
+    // Handle live gateway redirects:
+    // - bKash Tokenized Checkout returns ?paymentID=...&status=...
+    // - Stripe Card Checkout returns ?gateway=card&session_id=... or ?gateway=card&status=cancel
+    let gatewayToVerify: PaymentGateway | null = null;
+    let paymentIdToVerify: string | null = null;
+    let callbackStatus: string | null = statusParam;
+
+    if (bkashPaymentId) {
+      gatewayToVerify = "bkash";
+      paymentIdToVerify = bkashPaymentId;
+    } else if (demoGateway === "card" && (cardSessionId || statusParam)) {
+      gatewayToVerify = "card";
+      paymentIdToVerify = cardSessionId || "cancelled";
+      if (!callbackStatus) callbackStatus = "success";
+    }
+
+    if (!gatewayToVerify || !paymentIdToVerify) return;
+
+    const dedupeKey = `${gatewayToVerify}:${paymentIdToVerify}:${callbackStatus ?? ""}`;
+    if (processedCallbackRef.current === dedupeKey) return;
+    processedCallbackRef.current = dedupeKey;
+
+    let active = true;
+    setVerifyingPayment(true);
+    setPaymentError(null);
+
+    verifyEarlyPayment({
+      reference_code: referenceCode,
+      gateway: gatewayToVerify,
+      payment_id: paymentIdToVerify,
+      status: callbackStatus,
+    })
+      .then((result) => {
+        if (!active) return;
+        if (result.reservation) {
+          setBooking(result.reservation);
+        }
+        if (result.payment_status === "PAID") {
+          setPaymentNotice(result.message);
+        } else {
+          setPaymentError(result.message);
+        }
+        router.replace(`/booking/${referenceCode}`);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setPaymentError(
+          err instanceof Error
+            ? err.message
+            : "Unable to verify early settlement with payment gateway."
+        );
+      })
+      .finally(() => {
+        if (active) setVerifyingPayment(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [
+    bkashPaymentId,
+    cardSessionId,
+    demoCheckout,
+    demoGateway,
+    referenceCode,
+    router,
+    statusParam,
+  ]);
+
+  const handleStartEarlyPayment = async (gateway: PaymentGateway) => {
+    if (!booking) return;
+    setPayingGateway(gateway);
+    setPaymentError(null);
+    setPaymentNotice(null);
+    try {
+      const session = await initEarlyPayment({
+        reference_code: booking.reference_code,
+        gateway,
+        return_origin: window.location.origin,
+      });
+      window.location.assign(session.checkout_url);
+    } catch (err) {
+      setPaymentError(
+        err instanceof Error
+          ? err.message
+          : "Unable to initiate early settlement."
+      );
+      setPayingGateway(null);
+    }
+  };
+
+  const handleSandboxSettlement = async (outcome: "success" | "cancel") => {
+    if (!demoGateway || !demoPaymentId) return;
+    setVerifyingPayment(true);
+    setPaymentError(null);
+    try {
+      const result = await verifyEarlyPayment({
+        reference_code: referenceCode,
+        gateway: demoGateway,
+        payment_id: demoPaymentId,
+        status: outcome,
+      });
+      if (result.reservation) {
+        setBooking(result.reservation);
+      }
+      if (result.payment_status === "PAID") {
+        setPaymentNotice(result.message);
+      } else {
+        setPaymentError(result.message);
+      }
+      router.replace(`/booking/${referenceCode}`);
+    } catch (err) {
+      setPaymentError(
+        err instanceof Error ? err.message : "Sandbox settlement failed."
+      );
+    } finally {
+      setVerifyingPayment(false);
+    }
+  };
 
   const handleCheckInSimulator = async () => {
     if (!booking) return;
@@ -167,6 +324,13 @@ export default function BookingPassPage({
 
   const qrPayload = `NOCTURNE|${booking.reference_code}|${booking.table_code}|${booking.reservation_date}|${booking.time_slot}`;
   const isSeated = booking.status === "SEATED";
+  const isPaid = booking.payment_status === "PAID";
+  const payableAmount = Number(
+    booking.payable_amount_bdt ??
+      (Number(booking.pre_order_total_bdt) > 0
+        ? booking.pre_order_total_bdt
+        : (paymentConfig?.table_deposit_bdt ?? 1000))
+  );
 
   return (
     <div className="min-h-screen bg-obsidian pt-28 pb-24 px-4 sm:px-8 max-w-4xl mx-auto">
@@ -183,6 +347,72 @@ export default function BookingPassPage({
           Host Podium Ticket &bull; v{booking.version}
         </span>
       </div>
+
+      {/* Interactive Gateway Sandbox Sheet when gateway env credentials are not yet set */}
+      {demoCheckout && demoGateway && demoPaymentId && !isPaid && (
+        <div className="mb-6 border border-brass/50 bg-charcoal p-5 sm:p-6 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brass">
+                {demoGateway === "bkash"
+                  ? "bKash Tokenized Checkout Sandbox"
+                  : "Card Checkout Sandbox"}
+              </div>
+              <h2 className="mt-1 font-serif text-2xl text-cream">
+                Authorize Early Settlement ({formatBdt(payableAmount)})
+              </h2>
+            </div>
+            <span className="font-mono text-[11px] text-sand border border-brass/25 px-3 py-1 bg-obsidian">
+              Ref: {demoPaymentId}
+            </span>
+          </div>
+
+          <p className="text-xs font-sans text-sand/90 leading-relaxed">
+            Live {demoGateway === "bkash" ? "bKash merchant" : "Stripe"} API keys are not set in <code className="text-brass font-mono">.env</code> yet, so Nocturne opened its local checkout simulator so you can verify the end-to-end callback &amp; ledger flow cleanly.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled={verifyingPayment}
+              onClick={() => handleSandboxSettlement("success")}
+              className="px-5 py-3 bg-brass hover:bg-brass-soft disabled:opacity-60 text-obsidian font-syne text-[11px] font-bold uppercase tracking-[0.2em] transition-colors"
+            >
+              {verifyingPayment
+                ? "Verifying Settlement..."
+                : "Authorize Sandbox Payment"}
+            </button>
+            <button
+              type="button"
+              disabled={verifyingPayment}
+              onClick={() => handleSandboxSettlement("cancel")}
+              className="px-4 py-3 border border-brass/30 text-sand hover:text-cream font-mono text-[11px] uppercase tracking-[0.16em] transition-colors"
+            >
+              Cancel Payment
+            </button>
+          </div>
+        </div>
+      )}
+
+      {verifyingPayment && !demoCheckout && (
+        <div className="mb-6 border border-brass/35 bg-charcoal p-4 font-mono text-xs text-brass">
+          Executing gateway settlement verification for {referenceCode}...
+        </div>
+      )}
+
+      {paymentNotice && (
+        <div className="mb-6 border border-sage/50 bg-sage/10 p-4 flex items-start gap-2.5 text-xs text-cream">
+          <CheckCircle2 className="w-4 h-4 text-sage shrink-0 mt-0.5" />
+          <span>{paymentNotice}</span>
+        </div>
+      )}
+
+      {paymentError && (
+        <div className="mb-6 border border-ember/50 bg-ember/15 p-4 flex items-start gap-2.5 text-xs text-cream">
+          <AlertTriangle className="w-4 h-4 text-ember shrink-0 mt-0.5" />
+          <span>{paymentError}</span>
+        </div>
+      )}
 
       {/* Digital Boarding Pass Card with /media/pass-card-bg.jpg Texture */}
       <motion.div
@@ -232,6 +462,16 @@ export default function BookingPassPage({
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 {isSeated ? "SEATED · KITCHEN FIRED" : booking.status}
               </span>
+              {isPaid && (
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 font-mono text-[11px] font-medium border bg-brass/15 border-brass/60 text-brass">
+                  PAID IN ADVANCE &middot; {booking.payment_method || "EARLY"}
+                </span>
+              )}
+              {isPaid && booking.payment_reference && (
+                <span className="font-mono text-[10px] text-sand/80">
+                  Tx: {booking.payment_reference} ({formatBdt(booking.paid_amount_bdt ?? payableAmount)})
+                </span>
+              )}
             </div>
           </div>
 
@@ -381,7 +621,90 @@ export default function BookingPassPage({
             </button>
           </div>
         </div>
+
+        {/* Early Settlement Bar */}
+        <div className="border-t border-brass/25 bg-obsidian/90 px-6 sm:px-9 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          {isPaid ? (
+            <>
+              <div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-sage">
+                  Advance Settlement Verified
+                </div>
+                <div className="mt-1 text-xs font-sans text-sand">
+                  Settled {formatBdt(booking.paid_amount_bdt ?? payableAmount)} via{" "}
+                  <span className="text-cream font-medium">{booking.payment_method || "Gateway"}</span>
+                  {booking.payment_reference ? ` · Ref ${booking.payment_reference}` : ""}
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-sage border border-sage/40 bg-sage/10 px-4 py-2">
+                <CheckCircle2 className="w-4 h-4" />
+                Settled Prior to Arrival
+              </span>
+            </>
+          ) : (
+            <>
+              <div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-brass">
+                  Early Settlement Before Arrival
+                </div>
+                <div className="mt-1 text-xs font-sans text-sand">
+                  {Number(booking.pre_order_total_bdt) > 0
+                    ? `Full pre-order settlement (${formatBdt(payableAmount)}) for priority fire on arrival.`
+                    : `Optional refundable penthouse table deposit (${formatBdt(payableAmount)}), credited to your bill.`}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  disabled={payingGateway !== null || verifyingPayment}
+                  onClick={() => handleStartEarlyPayment("bkash")}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-brass hover:bg-brass-soft disabled:opacity-60 text-obsidian font-syne text-[10px] font-bold uppercase tracking-[0.18em] transition-colors"
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>
+                    {payingGateway === "bkash"
+                      ? "Connecting bKash..."
+                      : `Pre-Pay with bKash (${formatBdt(payableAmount)})`}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  disabled={payingGateway !== null || verifyingPayment}
+                  onClick={() => handleStartEarlyPayment("card")}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 border border-brass/45 hover:border-brass disabled:opacity-60 text-cream font-syne text-[10px] font-bold uppercase tracking-[0.18em] transition-colors"
+                >
+                  <CreditCard className="w-3.5 h-3.5 text-brass" />
+                  <span>
+                    {payingGateway === "card"
+                      ? "Opening Card..."
+                      : "Pre-Pay by Card"}
+                  </span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function BookingPassPage({
+  params,
+}: {
+  params: Promise<{ referenceCode: string }>;
+}) {
+  const { referenceCode } = use(params);
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-obsidian pt-36 px-4 text-center font-mono text-sm text-brass">
+          Retrieving Digital Boarding Pass {referenceCode}...
+        </div>
+      }
+    >
+      <BookingPassContent referenceCode={referenceCode} />
+    </Suspense>
   );
 }

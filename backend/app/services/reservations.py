@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.models.entities import (
     MenuItem,
     Reservation,
@@ -76,6 +77,12 @@ def serialize_reservation(reservation: Reservation) -> ReservationOut:
         )
         for item in reservation.items
     ]
+    pre_order_total = reservation.pre_order_total_bdt or Decimal("0.00")
+    payable_amount = (
+        pre_order_total
+        if pre_order_total > Decimal("0.00")
+        else Decimal(str(settings.TABLE_DEPOSIT_BDT))
+    )
     return ReservationOut(
         id=reservation.id,
         reference_code=reservation.reference_code,
@@ -89,7 +96,13 @@ def serialize_reservation(reservation: Reservation) -> ReservationOut:
         time_slot=reservation.time_slot,
         status=reservation.status,  # type: ignore[arg-type]
         special_occasion=reservation.special_occasion,
-        pre_order_total_bdt=reservation.pre_order_total_bdt,
+        pre_order_total_bdt=pre_order_total,
+        payable_amount_bdt=payable_amount,
+        payment_status=reservation.payment_status or "UNPAID",
+        payment_method=reservation.payment_method,
+        payment_reference=reservation.payment_reference,
+        paid_amount_bdt=reservation.paid_amount_bdt or Decimal("0.00"),
+        paid_at=reservation.paid_at,
         version=reservation.version,
         created_at=reservation.created_at,
         items=items_out,
@@ -212,6 +225,8 @@ async def confirm_reservation(
             if payload.special_occasion
             else None,
             pre_order_total_bdt=total_bdt,
+            payment_status="PENDING" if payload.payment_method != "PAY_AT_VENUE" else "UNPAID",
+            payment_method=payload.payment_method,
             version=1,
             items=reservation_items,
         )

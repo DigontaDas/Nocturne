@@ -6,6 +6,9 @@ export type ReservationStatus =
   | "SEATED"
   | "COMPLETED"
   | "CANCELLED";
+export type PaymentStatus = "UNPAID" | "PENDING" | "PAID" | "FAILED" | "CANCELLED";
+export type PaymentMethod = "PAY_AT_VENUE" | "BKASH" | "CARD";
+export type PaymentGateway = "bkash" | "card";
 
 export interface DiningZone {
   id: number;
@@ -127,9 +130,51 @@ export interface ReservationOut {
   status: ReservationStatus;
   special_occasion: string | null;
   pre_order_total_bdt: number | string;
+  payable_amount_bdt?: number | string;
+  payment_status?: PaymentStatus | string;
+  payment_method?: PaymentMethod | string | null;
+  payment_reference?: string | null;
+  paid_amount_bdt?: number | string;
+  paid_at?: string | null;
   version: number;
   created_at: string;
   items: ReservationItemOut[];
+}
+
+export interface PaymentConfigOut {
+  bkash: { configured: boolean; mode: "gateway" | "demo_simulation" | "unconfigured" };
+  card: { configured: boolean; mode: "gateway" | "demo_simulation" | "unconfigured" };
+  demo_simulation_enabled: boolean;
+  table_deposit_bdt: number;
+}
+
+export interface PaymentInitResponse {
+  reference_code: string;
+  gateway: PaymentGateway;
+  mode: "gateway" | "demo_simulation";
+  payment_id: string;
+  checkout_url: string;
+  amount_bdt: number | string;
+  currency: string;
+  merchant_invoice_no: string;
+}
+
+export interface PaymentVerifyResponse {
+  reference_code: string;
+  gateway: PaymentGateway;
+  payment_status: string;
+  payment_reference?: string | null;
+  paid_amount_bdt: number | string;
+  already_processed: boolean;
+  message: string;
+  reservation?: ReservationOut | null;
+}
+
+export interface ConciergeLlmStatus {
+  mode: string;
+  provider: string;
+  model: string;
+  live_llm: boolean;
 }
 
 export interface ConciergeTrace {

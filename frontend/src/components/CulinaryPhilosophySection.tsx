@@ -162,7 +162,7 @@ export function CulinaryPhilosophySection() {
           {/* Left Curtain Plane: Chef Tariq Portrait */}
           <div
             ref={leftCurtainRef}
-            className="lg:col-span-4 relative z-20 border border-brass/25 bg-charcoal overflow-hidden flex flex-col justify-between min-h-[380px] lg:min-h-[450px]"
+            className="lg:col-span-4 relative z-20 border border-brass/25 bg-charcoal overflow-hidden flex flex-col justify-between min-h-[320px] sm:min-h-[360px] lg:min-h-[450px]"
           >
             <img
               src="/media/chef-concierge.jpg"
@@ -193,7 +193,7 @@ export function CulinaryPhilosophySection() {
           {/* Center Obsidian Reveal: Live LangChain Culinary Concierge Prompt Launcher */}
           <div
             ref={centerRevealRef}
-            className="lg:col-span-4 relative z-10 border border-brass/45 bg-charcoal/70 backdrop-blur-md p-6 sm:p-7 flex flex-col justify-between min-h-[380px] lg:min-h-[450px]"
+            className="lg:col-span-4 relative z-10 border border-brass/45 bg-charcoal/70 backdrop-blur-md p-6 sm:p-7 flex flex-col justify-between min-h-[320px] sm:min-h-[360px] lg:min-h-[450px]"
           >
             <div>
               <div className="flex items-center justify-between gap-2 pb-4 border-b border-brass/20">
@@ -260,7 +260,7 @@ export function CulinaryPhilosophySection() {
           {/* Right Curtain Plane: Live Interactive Miniature 2D Floorplan Preview */}
           <div
             ref={rightCurtainRef}
-            className="lg:col-span-4 relative z-20 border border-brass/25 bg-charcoal p-5 flex flex-col justify-between min-h-[380px] lg:min-h-[450px]"
+            className="lg:col-span-4 relative z-20 border border-brass/25 bg-charcoal p-5 flex flex-col justify-between min-h-[320px] sm:min-h-[360px] lg:min-h-[450px]"
           >
             <div className="flex items-center justify-between border-b border-brass/20 pb-3">
               <div>
