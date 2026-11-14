@@ -120,3 +120,30 @@ async def test_concierge_hybrid_rag_and_sql_stream(concierge_client: AsyncClient
 
     streamed_text = "".join(data["text"] for name, data in events if name == "token")
     assert table["table_code"] in streamed_text
+
+
+@pytest.mark.asyncio
+async def test_health_alias_status_and_vercel_cors(concierge_client: AsyncClient):
+    health_resp = await concierge_client.get("/health")
+    assert health_resp.status_code == 200
+    assert health_resp.json()["status"] == "ok"
+
+    status_resp = await concierge_client.get("/api/v1/concierge/status")
+    assert status_resp.status_code == 200
+    status_body = status_resp.json()
+    assert "mode" in status_body
+    assert "provider" in status_body
+
+    cors_resp = await concierge_client.options(
+        "/api/v1/concierge/stream",
+        headers={
+            "Origin": "https://nocturne-preview-123.vercel.app",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    assert cors_resp.status_code == 200
+    assert (
+        cors_resp.headers.get("access-control-allow-origin")
+        == "https://nocturne-preview-123.vercel.app"
+    )

@@ -35,7 +35,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Nocturne, Rooftop Dining Sanctuary in Dhaka",
+  title: "Nocturne",
   description:
     "Reserve your exact 14th-floor skyline seat on an interactive Banani architectural floorplan with acoustic metering, seasonal wood-fired tasting pre-orders, early bKash or card settlement, and real-time culinary guidance.",
   icons: {

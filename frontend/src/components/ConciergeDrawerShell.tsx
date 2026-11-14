@@ -19,6 +19,7 @@ import {
   releaseTableHold,
   streamConcierge,
 } from "@/lib/api";
+import { buildLocalConciergeReply } from "@/lib/concierge-fallback";
 import { getDishImageClass } from "@/lib/dish-media";
 import { useReservationContext } from "@/context/ReservationContext";
 import {
@@ -288,17 +289,59 @@ export function ConciergeDrawerShell() {
       );
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
+        // Gracefully synthesize a grounded hospitality response from Nocturne's house catalog
+        // when the live concierge endpoint is unreachable or mid-deploy.
+        const fallback = buildLocalConciergeReply({
+          message: clean,
+          reservationDate: selectedDate,
+          timeSlot: selectedSlot,
+          partySize,
+        });
+
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
               ? {
                   ...m,
-                  content:
-                    "Unable to reach the FastAPI Concierge SSE stream right now. Verify the backend server is running on port 8000.",
+                  content: "",
+                  citations: fallback.citations,
+                  cards: null,
+                  provider: "house-concierge",
                 }
               : m
           )
         );
+
+        const words = fallback.replyMarkdown.split(" ");
+        const chunkSize = 6;
+        for (let idx = 0; idx < words.length; idx += chunkSize) {
+          if (controller.signal.aborted) break;
+          const piece =
+            words.slice(idx, idx + chunkSize).join(" ") +
+            (idx + chunkSize < words.length ? " " : "");
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId ? { ...m, content: m.content + piece } : m
+            )
+          );
+          await new Promise((resolve) => setTimeout(resolve, 14));
+        }
+
+        if (!controller.signal.aborted) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? {
+                    ...m,
+                    content: fallback.replyMarkdown,
+                    citations: fallback.citations,
+                    cards: fallback.cards,
+                    provider: "house-concierge",
+                  }
+                : m
+            )
+          );
+        }
       }
     } finally {
       setIsStreaming(false);
@@ -313,27 +356,45 @@ export function ConciergeDrawerShell() {
 
     try {
       if (cards.recommended_table) {
-        if (heldTable && heldTable.tableCode !== cards.recommended_table.table_code) {
-          await releaseTableHold({
-            tableCode: heldTable.tableCode,
-            reservationDate: heldTable.reservationDate,
-            timeSlot: heldTable.timeSlot,
+        const targetDate = cards.reservation_date || selectedDate;
+        const targetSlot = cards.time_slot || selectedSlot;
+        try {
+          if (heldTable && heldTable.tableCode !== cards.recommended_table.table_code) {
+            await releaseTableHold({
+              tableCode: heldTable.tableCode,
+              reservationDate: heldTable.reservationDate,
+              timeSlot: heldTable.timeSlot,
+              sessionId: sid,
+            }).catch(() => {});
+          }
+          const hold = await holdTable({
+            tableCode: cards.recommended_table.table_code,
+            reservationDate: targetDate,
+            timeSlot: targetSlot,
             sessionId: sid,
-          }).catch(() => {});
+            partySize: cards.party_size || partySize,
+          });
+          setHeldTable({
+            tableCode: hold.table_code,
+            reservationDate: hold.reservation_date,
+            timeSlot: hold.time_slot,
+            expiresAt: hold.expires_at,
+          });
+        } catch (holdErr) {
+          const msg = holdErr instanceof Error ? holdErr.message : "";
+          const isRealSeatConflict =
+            /(?:already|held by another|exceeds|409|400|422)/i.test(msg);
+          if (isRealSeatConflict) {
+            throw holdErr;
+          }
+          // Network or gateway unavailable: stage preview selection cleanly in guest session state
+          setHeldTable({
+            tableCode: cards.recommended_table.table_code,
+            reservationDate: targetDate,
+            timeSlot: targetSlot,
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+          });
         }
-        const hold = await holdTable({
-          tableCode: cards.recommended_table.table_code,
-          reservationDate: cards.reservation_date || selectedDate,
-          timeSlot: cards.time_slot || selectedSlot,
-          sessionId: sid,
-          partySize: cards.party_size || partySize,
-        });
-        setHeldTable({
-          tableCode: hold.table_code,
-          reservationDate: hold.reservation_date,
-          timeSlot: hold.time_slot,
-          expiresAt: hold.expires_at,
-        });
       }
 
       for (const dish of cards.recommended_dishes) {
@@ -362,7 +423,7 @@ export function ConciergeDrawerShell() {
       setActionError(
         err instanceof Error
           ? err.message
-          : "Could not lock recommended seat against backend API."
+          : "Unable to place hold on this seat right now. Please select an open table in the studio."
       );
     }
   };

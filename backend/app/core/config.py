@@ -77,6 +77,7 @@ class Settings(BaseSettings):
     SEAT_HOLD_TTL_SECONDS: int = 600
     EMBEDDING_DIM: int = 384
     EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
+    ENABLE_LOCAL_TRANSFORMER_EMBEDDINGS: bool = False
 
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"

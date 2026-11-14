@@ -30,7 +30,9 @@ def _deterministic_hash_embedding(text: str, dim: int = settings.EMBEDDING_DIM) 
 
 @lru_cache(maxsize=1)
 def _load_sentence_transformer():
-    """Lazily load local HuggingFace sentence-transformer if cached/reachable."""
+    """Lazily load local sentence-transformer only when explicitly enabled."""
+    if not settings.ENABLE_LOCAL_TRANSFORMER_EMBEDDINGS:
+        return None
     try:
         from sentence_transformers import SentenceTransformer
 

@@ -73,7 +73,7 @@ export function TablePerspectiveDrawer({
           <p className="mt-3 text-sm text-sand font-light leading-relaxed">
             Click any emerald or brass table marker on the architectural floorplan to inspect
             its first-person Banani view photo, acoustic decibel meter, and trigger a
-            10-minute distributed Redis lock.
+            10-minute private seat hold.
           </p>
 
           <div className="mt-6 rounded-2xl overflow-hidden hairline-brass bg-obsidian relative">
@@ -265,7 +265,7 @@ export function TablePerspectiveDrawer({
             <Lock className="w-4 h-4" />
             <span>
               {isHolding
-                ? "Locking Seat in Redis..."
+                ? "Reserving Seat..."
                 : isBlocked
                   ? `Table ${selectedTable.table_code} Unavailable`
                   : `Hold ${selectedTable.table_code} (10-Min Lock)`}

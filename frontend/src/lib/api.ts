@@ -16,8 +16,25 @@ import {
   TableHoldResponse,
 } from "@/types/nocturne";
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8000";
+function resolveApiBaseUrl(): string {
+  const raw = (process.env.NEXT_PUBLIC_API_URL || "").trim().replace(/\/+$/, "");
+  if (!raw) return "http://localhost:8000";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (/^(localhost|127\.0\.0\.1)(:|\/|$)/i.test(raw)) return `http://${raw}`;
+  return `https://${raw}`;
+}
+
+export const API_BASE_URL = resolveApiBaseUrl();
+
+export function isLoopbackApiOnRemoteHost(): boolean {
+  if (typeof window === "undefined") return false;
+  const pageHost = window.location.hostname;
+  const pageIsLocal =
+    pageHost === "localhost" || pageHost === "127.0.0.1" || pageHost === "::1";
+  const apiIsLocal =
+    /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(API_BASE_URL);
+  return !pageIsLocal && apiIsLocal;
+}
 
 export function formatBdt(value: number | string): string {
   const num = typeof value === "string" ? Number(value) : value;
@@ -332,22 +349,58 @@ export async function streamConcierge(
   handlers: ConciergeStreamHandlers,
   signal?: AbortSignal
 ): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/concierge/stream`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-    signal,
-  });
+  if (isLoopbackApiOnRemoteHost()) {
+    throw new Error("Remote API endpoint not configured for this host.");
+  }
+
+  const handshakeController = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => {
+    handshakeController.abort();
+  }, 6500);
+
+  const forwardAbort = () => handshakeController.abort();
+  if (signal) {
+    if (signal.aborted) {
+      globalThis.clearTimeout(timeoutId);
+      throw new DOMException("Aborted", "AbortError");
+    }
+    signal.addEventListener("abort", forwardAbort, { once: true });
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/v1/concierge/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: handshakeController.signal,
+    });
+  } catch (err) {
+    globalThis.clearTimeout(timeoutId);
+    signal?.removeEventListener("abort", forwardAbort);
+    if (signal?.aborted) {
+      throw err;
+    }
+    throw new Error("Concierge service unreachable.");
+  }
+
+  globalThis.clearTimeout(timeoutId);
+  signal?.removeEventListener("abort", forwardAbort);
 
   if (!res.ok || !res.body) {
-    throw new Error(`Concierge stream unavailable (${res.status})`);
+    throw new Error(`Concierge service unavailable (${res.status})`);
   }
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
+  let tokenCount = 0;
 
   while (true) {
+    if (signal?.aborted) {
+      await reader.cancel().catch(() => {});
+      throw new DOMException("Aborted", "AbortError");
+    }
     const { done, value } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
@@ -370,12 +423,19 @@ export async function streamConcierge(
         const parsed = JSON.parse(rawData);
         if (eventName === "trace") handlers.onTrace?.(parsed as ConciergeTrace);
         else if (eventName === "citation") handlers.onCitation?.(parsed as ConciergeCitation);
-        else if (eventName === "token") handlers.onToken?.(parsed.text || "");
-        else if (eventName === "cards") handlers.onCards?.(parsed as ConciergeCardPayload);
+        else if (eventName === "token") {
+          const text = parsed.text || "";
+          if (text) tokenCount += 1;
+          handlers.onToken?.(text);
+        } else if (eventName === "cards") handlers.onCards?.(parsed as ConciergeCardPayload);
         else if (eventName === "done") handlers.onDone?.(parsed);
       } catch {
         // Ignore malformed partial frame
       }
     }
+  }
+
+  if (tokenCount === 0) {
+    throw new Error("Concierge stream returned an empty response.");
   }
 }

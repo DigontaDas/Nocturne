@@ -170,10 +170,13 @@ export function MenuCustomizerSection({
 
       router.push(`/booking/${ticket.reference_code}`);
     } catch (err) {
+      const rawMsg = err instanceof Error ? err.message : "";
+      const isValidationOrConflict =
+        /(?:already|hold|409|400|422|expired|invalid|phone|name)/i.test(rawMsg);
       setConfirmError(
-        err instanceof Error
-          ? err.message
-          : "Unable to complete reservation against backend API."
+        isValidationOrConflict
+          ? rawMsg
+          : "Unable to finalize your reservation right now. Please try again in a moment."
       );
     } finally {
       setSubmitting(false);

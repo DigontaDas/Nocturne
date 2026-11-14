@@ -387,7 +387,7 @@ export function CulinaryPhilosophySection() {
 
             <div className="pt-3 border-t border-brass/20 flex items-center justify-between gap-3">
               <span className="font-mono text-[10px] text-sand/80">
-                Redis Two-Phase Lock • 600s
+                10-Minute Private Seat Hold
               </span>
               <Link
                 href="/reserve"

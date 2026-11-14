@@ -192,10 +192,12 @@ function ReserveStudioContent() {
       });
       await refetchTables();
     } catch (err) {
+      const rawMsg = err instanceof Error ? err.message : "";
+      const isConflict = /(?:already|held by|409|400|422)/i.test(rawMsg);
       setHoldError(
-        err instanceof Error
-          ? err.message
-          : "Unable to acquire distributed Redis seat lock."
+        isConflict
+          ? rawMsg
+          : "Unable to confirm this seat hold right now. Please select another open table or try again shortly."
       );
     } finally {
       setIsHolding(false);

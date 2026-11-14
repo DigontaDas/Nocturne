@@ -45,7 +45,7 @@ Nocturne is a full-stack fine-dining reservation, spatial seat-locking, seasonal
 |---|---|
 | Frontend | Next.js 15 App Router, React 19, TypeScript, Tailwind CSS, TanStack Query, GSAP, Framer Motion, Lenis |
 | Backend | FastAPI, Pydantic Settings, SQLAlchemy 2 Async (`asyncpg`), Alembic migrations |
-| Primary Database | PostgreSQL 16 with `pgvector` (384-d `sentence-transformers/all-MiniLM-L6-v2` embeddings) and `pg_trgm` |
+| Primary Database | PostgreSQL 16 with `pgvector` (384-d vector embeddings) and `pg_trgm` |
 | Lock & Ephemeral Cache | Redis (`redis.asyncio`) with atomic `SET NX EX` seat holds |
 | Concierge Streaming | Server-Sent Events (SSE) with LangChain ChatGroq / OpenAI-compatible Llama client + grounded fallback |
 
