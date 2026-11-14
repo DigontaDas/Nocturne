@@ -39,12 +39,18 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
+    connect_args: dict[str, object] = {}
+    if settings.DATABASE_URL.startswith("postgresql"):
+        connect_args["timeout"] = 30
+        if "-pooler" in settings.DATABASE_URL:
+            connect_args["statement_cache_size"] = 0
+
     connectable = create_async_engine(
         settings.DATABASE_URL,
         poolclass=pool.NullPool,
-        connect_args={"timeout": 15} if settings.DATABASE_URL.startswith("postgresql") else {},
+        connect_args=connect_args,
     )
-    async with connectable.connect() as connection:
+    async with connectable.begin() as connection:
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()
 

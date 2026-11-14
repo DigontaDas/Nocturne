@@ -114,26 +114,91 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def validate_database_url(cls, v: object) -> str:
-        return normalize_database_url(v)
+        cleaned = normalize_database_url(v)
+        if not cleaned:
+            return "postgresql+asyncpg://nocturne:nocturne_secret@localhost:5433/nocturne"
+        return cleaned
 
-    @field_validator("REDIS_URL", "FRONTEND_URL", mode="before")
+    @field_validator(
+        "REDIS_URL",
+        "FRONTEND_URL",
+        "GROQ_API_KEY",
+        "GROQ_MODEL",
+        "LLAMA_API_KEY",
+        "LLAMA_BASE_URL",
+        "LLAMA_MODEL",
+        "OLLAMA_BASE_URL",
+        "OLLAMA_MODEL",
+        "STRIPE_SECRET_KEY",
+        "BKASH_APP_KEY",
+        "BKASH_APP_SECRET",
+        "BKASH_USERNAME",
+        "BKASH_PASSWORD",
+        mode="before",
+    )
     @classmethod
     def strip_url_quotes(cls, v: object) -> str:
+        if v is None:
+            return ""
         return _strip_wrapping_quotes(v)
+
+    @field_validator(
+        "TABLE_DEPOSIT_BDT",
+        "FREE_CANCELLATION_HOURS",
+        "NO_SHOW_GRACE_MINUTES",
+        mode="before",
+    )
+    @classmethod
+    def empty_int_to_default(cls, v: object, info) -> object:
+        if isinstance(v, str) and not v.strip():
+            defaults = {
+                "TABLE_DEPOSIT_BDT": 1000,
+                "FREE_CANCELLATION_HOURS": 4,
+                "NO_SHOW_GRACE_MINUTES": 15,
+            }
+            return defaults[info.field_name]
+        return v
+
+    @field_validator("PAYMENT_ALLOW_DEMO_SIMULATION", mode="before")
+    @classmethod
+    def empty_bool_to_default(cls, v: object) -> object:
+        if isinstance(v, str) and not v.strip():
+            return True
+        return v
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v: object) -> list[str]:
+        default_origins = [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:3300",
+            "http://127.0.0.1:3300",
+        ]
         if isinstance(v, str):
-            raw = v.strip()
+            raw = _strip_wrapping_quotes(v)
+            if not raw:
+                return default_origins
             if raw.startswith("["):
+                import ast
                 import json
 
-                return json.loads(raw)
-            return [item.strip() for item in raw.split(",") if item.strip()]
+                for parser in (json.loads, ast.literal_eval):
+                    try:
+                        parsed = parser(raw)
+                        if isinstance(parsed, list):
+                            return [str(item).strip() for item in parsed if str(item).strip()]
+                    except Exception:
+                        pass
+                raw = raw.strip("[]")
+            return [
+                item.strip().strip('"').strip("'")
+                for item in raw.split(",")
+                if item.strip().strip('"').strip("'")
+            ] or default_origins
         if isinstance(v, list):
             return v
-        return ["http://localhost:3000"]
+        return default_origins
 
 
 settings = Settings()

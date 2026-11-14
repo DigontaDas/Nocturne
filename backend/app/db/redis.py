@@ -6,8 +6,11 @@ from app.core.config import settings
 
 def create_redis_client() -> Redis:
     """Create an async Redis client configured with bounded socket timeouts."""
+    url = settings.REDIS_URL.strip() or "redis://localhost:6379/0"
+    if not url.startswith(("redis://", "rediss://", "unix://")):
+        url = "redis://localhost:6379/0"
     return Redis.from_url(
-        settings.REDIS_URL,
+        url,
         encoding="utf-8",
         decode_responses=True,
         socket_connect_timeout=2,

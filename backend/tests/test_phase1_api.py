@@ -228,7 +228,9 @@ async def test_two_phase_seat_locking_and_concurrency(test_env):
 
 
 def test_database_url_normalization_for_cloud_providers():
-    from app.core.config import normalize_database_url
+    from app.core.config import Settings, normalize_database_url
+    from app.db.redis import create_redis_client
+    from scripts.start import bootstrap_database
 
     assert (
         normalize_database_url(
@@ -244,3 +246,27 @@ def test_database_url_normalization_for_cloud_providers():
         normalize_database_url("postgresql+asyncpg://u:p@ep.neon.tech/neondb?ssl=require")
         == "postgresql+asyncpg://u:p@ep.neon.tech/neondb?ssl=require"
     )
+
+    cfg = Settings(
+        DATABASE_URL="",
+        REDIS_URL="",
+        TABLE_DEPOSIT_BDT="",
+        FREE_CANCELLATION_HOURS="",
+        NO_SHOW_GRACE_MINUTES="",
+        PAYMENT_ALLOW_DEMO_SIMULATION="",
+        CORS_ORIGINS="https://nocturne-one-xi.vercel.app, http://localhost:3300",
+    )
+    assert cfg.DATABASE_URL.startswith("postgresql+asyncpg://")
+    assert cfg.TABLE_DEPOSIT_BDT == 1000
+    assert cfg.FREE_CANCELLATION_HOURS == 4
+    assert cfg.NO_SHOW_GRACE_MINUTES == 15
+    assert cfg.PAYMENT_ALLOW_DEMO_SIMULATION is True
+    assert "https://nocturne-one-xi.vercel.app" in cfg.CORS_ORIGINS
+
+    # Single-quoted / bracketed CORS format from dashboard copy-paste should never crash
+    cfg_bracket = Settings(CORS_ORIGINS="['https://nocturne-one-xi.vercel.app']")
+    assert cfg_bracket.CORS_ORIGINS == ["https://nocturne-one-xi.vercel.app"]
+
+    # Empty REDIS_URL should safely instantiate fallback client instead of crashing lifespan
+    assert create_redis_client() is not None
+    assert callable(bootstrap_database)
