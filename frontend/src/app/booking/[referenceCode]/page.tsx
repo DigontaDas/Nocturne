@@ -12,20 +12,25 @@ import {
   Clock,
   CreditCard,
   MapPin,
+  RotateCcw,
   ShieldCheck,
   Smartphone,
   Sparkles,
+  UserX,
   Users,
   UtensilsCrossed,
 } from "lucide-react";
 import {
+  cancelReservation,
   checkInReservation,
   fetchPaymentConfig,
   fetchReservation,
   formatBdt,
   initEarlyPayment,
+  markReservationNoShow,
   verifyEarlyPayment,
 } from "@/lib/api";
+import { getDishImageClass } from "@/lib/dish-media";
 import { FALLBACK_BOOKING } from "@/lib/fallback-data";
 import {
   PaymentConfigOut,
@@ -100,6 +105,11 @@ function BookingPassContent({
   const [verifyingPayment, setVerifyingPayment] = useState(false);
   const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+  const [markingNoShow, setMarkingNoShow] = useState(false);
+  const [lifecycleError, setLifecycleError] = useState<string | null>(null);
   const processedCallbackRef = useRef<string | null>(null);
 
   const demoCheckout = searchParams.get("demo_checkout") === "1";
@@ -243,7 +253,7 @@ function BookingPassContent({
     }
   };
 
-  const handleSandboxSettlement = async (outcome: "success" | "cancel") => {
+  const handleTestCheckout = async (outcome: "success" | "cancel") => {
     if (!demoGateway || !demoPaymentId) return;
     setVerifyingPayment(true);
     setPaymentError(null);
@@ -265,37 +275,83 @@ function BookingPassContent({
       router.replace(`/booking/${referenceCode}`);
     } catch (err) {
       setPaymentError(
-        err instanceof Error ? err.message : "Sandbox settlement failed."
+        err instanceof Error ? err.message : "Test checkout settlement failed."
       );
     } finally {
       setVerifyingPayment(false);
     }
   };
 
-  const handleCheckInSimulator = async () => {
+  const handleCheckIn = async () => {
     if (!booking) return;
     setCheckingIn(true);
+    setLifecycleError(null);
     try {
       const updated = await checkInReservation(booking.reference_code);
       setBooking(updated);
-    } catch {
-      // Allow local visual state transition only if API offline on seeded demo pass
-      if (booking.reference_code === "NOC-2026-9941") {
+    } catch (err) {
+      if (booking.reference_code === "NOC-2026-9941" && booking.status === "CONFIRMED") {
         setBooking({
           ...booking,
           status: "SEATED",
           version: booking.version + 1,
         });
+      } else {
+        setLifecycleError(
+          err instanceof Error ? err.message : "Unable to check in reservation."
+        );
       }
     } finally {
       setCheckingIn(false);
     }
   };
 
+  const handleCancelBooking = async () => {
+    if (!booking) return;
+    setCancelling(true);
+    setLifecycleError(null);
+    setPaymentError(null);
+    try {
+      const res = await cancelReservation(booking.reference_code, {
+        reason: cancelReason.trim() || "Cancelled by guest",
+      });
+      setBooking(res.reservation);
+      setCancelConfirmOpen(false);
+      setPaymentNotice(res.message);
+    } catch (err) {
+      setLifecycleError(
+        err instanceof Error ? err.message : "Unable to cancel reservation."
+      );
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const handleMarkNoShow = async (hostOverride: boolean) => {
+    if (!booking) return;
+    setMarkingNoShow(true);
+    setLifecycleError(null);
+    setPaymentError(null);
+    try {
+      const res = await markReservationNoShow(booking.reference_code, {
+        host_override: hostOverride,
+        note: "Marked no-show from host stand",
+      });
+      setBooking(res.reservation);
+      setPaymentNotice(res.message);
+    } catch (err) {
+      setLifecycleError(
+        err instanceof Error ? err.message : "Unable to mark no-show right now."
+      );
+    } finally {
+      setMarkingNoShow(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-obsidian pt-36 px-4 text-center font-mono text-sm text-brass">
-        Retrieving Digital Boarding Pass {referenceCode}...
+        Retrieving Reservation Pass {referenceCode}...
       </div>
     );
   }
@@ -316,7 +372,7 @@ function BookingPassContent({
           className="inline-flex items-center gap-2 px-6 py-3 bg-brass text-obsidian font-syne text-xs font-bold uppercase tracking-[0.2em]"
         >
           <ArrowLeft className="w-4 h-4" />
-          Return to Seat-Picker Studio
+          Return to Reservations
         </Link>
       </div>
     );
@@ -324,7 +380,14 @@ function BookingPassContent({
 
   const qrPayload = `NOCTURNE|${booking.reference_code}|${booking.table_code}|${booking.reservation_date}|${booking.time_slot}`;
   const isSeated = booking.status === "SEATED";
+  const isCancelled = booking.status === "CANCELLED";
+  const isNoShow = booking.status === "NO_SHOW";
+  const isReleased = isCancelled || isNoShow;
   const isPaid = booking.payment_status === "PAID";
+  const isRefunded =
+    booking.payment_status === "REFUNDED" ||
+    booking.payment_status === "PARTIALLY_REFUNDED";
+  const isForfeited = booking.payment_status === "FORFEITED";
   const payableAmount = Number(
     booking.payable_amount_bdt ??
       (Number(booking.pre_order_total_bdt) > 0
@@ -340,23 +403,23 @@ function BookingPassContent({
           className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-sand hover:text-brass transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Floorplan Studio
+          Back to Floorplan
         </Link>
 
         <span className="font-mono text-xs text-sand/80">
-          Host Podium Ticket &bull; v{booking.version}
+          Host Stand Pass &bull; v{booking.version}
         </span>
       </div>
 
-      {/* Interactive Gateway Sandbox Sheet when gateway env credentials are not yet set */}
-      {demoCheckout && demoGateway && demoPaymentId && !isPaid && (
+      {/* Test Checkout Sheet when live merchant credentials are not configured */}
+      {demoCheckout && demoGateway && demoPaymentId && !isPaid && !isReleased && (
         <div className="mb-6 border border-brass/50 bg-charcoal p-5 sm:p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brass">
                 {demoGateway === "bkash"
-                  ? "bKash Tokenized Checkout Sandbox"
-                  : "Card Checkout Sandbox"}
+                  ? "bKash Tokenized Test Checkout"
+                  : "Card Test Checkout"}
               </div>
               <h2 className="mt-1 font-serif text-2xl text-cream">
                 Authorize Early Settlement ({formatBdt(payableAmount)})
@@ -368,24 +431,24 @@ function BookingPassContent({
           </div>
 
           <p className="text-xs font-sans text-sand/90 leading-relaxed">
-            Live {demoGateway === "bkash" ? "bKash merchant" : "Stripe"} API keys are not set in <code className="text-brass font-mono">.env</code> yet, so Nocturne opened its local checkout simulator so you can verify the end-to-end callback &amp; ledger flow cleanly.
+            Test checkout mode is active for {demoGateway === "bkash" ? "bKash" : "Visa & Mastercard"} so you can verify payment authorization, callbacks, and automated refunds cleanly before connecting live merchant billing.
           </p>
 
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               disabled={verifyingPayment}
-              onClick={() => handleSandboxSettlement("success")}
+              onClick={() => handleTestCheckout("success")}
               className="px-5 py-3 bg-brass hover:bg-brass-soft disabled:opacity-60 text-obsidian font-syne text-[11px] font-bold uppercase tracking-[0.2em] transition-colors"
             >
               {verifyingPayment
                 ? "Verifying Settlement..."
-                : "Authorize Sandbox Payment"}
+                : "Authorize Payment"}
             </button>
             <button
               type="button"
               disabled={verifyingPayment}
-              onClick={() => handleSandboxSettlement("cancel")}
+              onClick={() => handleTestCheckout("cancel")}
               className="px-4 py-3 border border-brass/30 text-sand hover:text-cream font-mono text-[11px] uppercase tracking-[0.16em] transition-colors"
             >
               Cancel Payment
@@ -447,27 +510,47 @@ function BookingPassContent({
 
             <div className="flex flex-col md:items-end gap-2">
               <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-sand">
-                Boarding Reference
+                Reservation Code
               </span>
               <span className="font-mono text-2xl sm:text-3xl text-brass font-semibold tracking-wider tabular-nums">
                 {booking.reference_code}
               </span>
               <span
                 className={`inline-flex items-center gap-1.5 px-3.5 py-1 font-mono text-xs font-medium border ${
-                  isSeated
-                    ? "bg-brass/20 border-brass text-brass"
-                    : "bg-sage/20 border-sage text-sage"
+                  isReleased
+                    ? "bg-ember/20 border-ember text-ember"
+                    : isSeated
+                      ? "bg-brass/20 border-brass text-brass"
+                      : "bg-sage/20 border-sage text-sage"
                 }`}
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                {isSeated ? "SEATED · KITCHEN FIRED" : booking.status}
+                {isSeated
+                  ? "SEATED · KITCHEN FIRED"
+                  : isNoShow
+                    ? "NO-SHOW · SEAT RELEASED"
+                    : isCancelled
+                      ? "CANCELLED · SEAT RELEASED"
+                      : booking.status}
               </span>
-              {isPaid && (
-                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 font-mono text-[11px] font-medium border bg-brass/15 border-brass/60 text-brass">
-                  PAID IN ADVANCE &middot; {booking.payment_method || "EARLY"}
+              {(isPaid || isRefunded || isForfeited) && (
+                <span
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-1 font-mono text-[11px] font-medium border ${
+                    isRefunded
+                      ? "bg-sage/15 border-sage/60 text-sage"
+                      : isForfeited
+                        ? "bg-ember/15 border-ember/60 text-ember"
+                        : "bg-brass/15 border-brass/60 text-brass"
+                  }`}
+                >
+                  {isRefunded
+                    ? `${booking.payment_status === "PARTIALLY_REFUNDED" ? "PARTIAL REFUND" : "REFUNDED"} · ${formatBdt(booking.refund_amount_bdt ?? 0)}`
+                    : isForfeited
+                      ? `DEPOSIT FORFEITED · ${formatBdt(booking.paid_amount_bdt ?? payableAmount)}`
+                      : `PAID IN ADVANCE · ${booking.payment_method || "EARLY"}`}
                 </span>
               )}
-              {isPaid && booking.payment_reference && (
+              {(isPaid || isRefunded) && booking.payment_reference && (
                 <span className="font-mono text-[10px] text-sand/80">
                   Tx: {booking.payment_reference} ({formatBdt(booking.paid_amount_bdt ?? payableAmount)})
                 </span>
@@ -567,7 +650,7 @@ function BookingPassContent({
                           <img
                             src={item.image_url}
                             alt={item.dish_name}
-                            className="w-full h-full object-cover mix-blend-lighten"
+                            className={getDishImageClass(item.image_url, "mix-blend-lighten")}
                           />
                         </div>
                         <div className="min-w-0">
@@ -590,8 +673,8 @@ function BookingPassContent({
             )}
           </div>
 
-          {/* Right QR Pass & 1-Click Host Check-In Simulator */}
-          <div className="md:col-span-4 flex flex-col items-center justify-center bg-obsidian p-6 border border-brass/25 text-center space-y-4">
+          {/* Right QR Pass & Host Podium Desk */}
+          <div className="md:col-span-4 flex flex-col items-center justify-center bg-obsidian p-6 border border-brass/25 text-center space-y-3">
             <QrPassSvg value={qrPayload} />
 
             <div className="space-y-1">
@@ -605,26 +688,81 @@ function BookingPassContent({
 
             <button
               type="button"
-              disabled={isSeated || checkingIn}
-              onClick={handleCheckInSimulator}
+              disabled={isSeated || isReleased || checkingIn}
+              onClick={handleCheckIn}
               data-cursor="RESERVE"
-              className="w-full py-3.5 px-4 bg-brass hover:bg-brass-soft disabled:bg-sage/20 disabled:text-sage disabled:border disabled:border-sage/40 text-obsidian font-syne text-[11px] font-bold uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-colors"
+              className="w-full py-3 px-4 bg-brass hover:bg-brass-soft disabled:bg-obsidian disabled:text-sand/60 disabled:border disabled:border-brass/25 text-obsidian font-syne text-[10.5px] font-bold uppercase tracking-[0.18em] flex items-center justify-center gap-2 transition-colors"
             >
               <ShieldCheck className="w-4 h-4" />
               <span>
                 {isSeated
                   ? "Checked In · Courses Fired"
-                  : checkingIn
-                    ? "Firing Kitchen..."
-                    : "Simulate Host Check-In"}
+                  : isReleased
+                    ? `Seat Released (${booking.status})`
+                    : checkingIn
+                      ? "Firing Kitchen..."
+                      : "Host Stand · Check In"}
               </span>
             </button>
+
+            {booking.status === "CONFIRMED" && (
+              <div className="w-full pt-1 flex flex-col gap-1.5">
+                <button
+                  type="button"
+                  disabled={markingNoShow}
+                  onClick={() => void handleMarkNoShow(false)}
+                  className="w-full py-2 px-3 border border-ember/40 hover:border-ember text-ember font-mono text-[10px] uppercase tracking-[0.16em] flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                >
+                  <UserX className="w-3.5 h-3.5" />
+                  <span>{markingNoShow ? "Updating..." : "Host · Mark No-Show"}</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={markingNoShow}
+                  onClick={() => void handleMarkNoShow(true)}
+                  className="text-[10px] font-mono text-sand/70 hover:text-brass underline-offset-4 hover:underline transition-colors"
+                >
+                  Release Now (Host Override)
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
+        {lifecycleError && (
+          <div className="border-t border-ember/40 bg-ember/10 px-6 sm:px-9 py-3 text-xs font-mono text-ember flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{lifecycleError}</span>
+          </div>
+        )}
+
         {/* Early Settlement Bar */}
         <div className="border-t border-brass/25 bg-obsidian/90 px-6 sm:px-9 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          {isPaid ? (
+          {isReleased ? (
+            <>
+              <div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ember">
+                  {isNoShow ? "No-Show Settlement Summary" : "Cancellation & Refund Summary"}
+                </div>
+                <div className="mt-1 text-xs font-sans text-sand leading-relaxed">
+                  Table <span className="text-cream font-mono">{booking.table_code}</span> has been
+                  returned to live availability.
+                  {Number(booking.refund_amount_bdt ?? 0) > 0 &&
+                    ` Refunded ${formatBdt(booking.refund_amount_bdt ?? 0)} to your original payment method.`}
+                  {isForfeited &&
+                    ` Table fee (${formatBdt(booking.paid_amount_bdt ?? 1000)}) was retained under Nocturne’s late-change policy.`}
+                  {booking.cancellation_reason && ` Reason: ${booking.cancellation_reason}.`}
+                </div>
+              </div>
+              <Link
+                href="/reserve"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-brass hover:bg-brass-soft text-obsidian font-syne text-[10px] font-bold uppercase tracking-[0.18em] shrink-0 transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Book Another Table</span>
+              </Link>
+            </>
+          ) : isPaid ? (
             <>
               <div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-sage">
@@ -685,6 +823,78 @@ function BookingPassContent({
             </>
           )}
         </div>
+
+        {/* Manage or Cancel Reservation Policy Strip */}
+        {!isReleased && !isSeated && booking.cancellation_policy && (
+          <div className="border-t border-brass/15 bg-charcoal/85 px-6 sm:px-9 py-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-brass">
+                  Cancellation &amp; Refund Policy
+                </div>
+                <p className="text-xs font-sans text-sand leading-relaxed">
+                  {booking.cancellation_policy.policy_summary}
+                </p>
+              </div>
+
+              {booking.cancellation_policy.can_cancel && !cancelConfirmOpen && (
+                <button
+                  type="button"
+                  onClick={() => setCancelConfirmOpen(true)}
+                  className="px-4 py-2.5 border border-ember/55 hover:border-ember text-ember font-syne text-[10px] font-bold uppercase tracking-[0.18em] transition-colors shrink-0"
+                >
+                  Cancel Reservation
+                </button>
+              )}
+            </div>
+
+            {cancelConfirmOpen && (
+              <div className="border border-ember/40 bg-obsidian/80 p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                  <span className="text-cream">
+                    Estimated Refund:{" "}
+                    <strong className="text-sage">
+                      {formatBdt(booking.cancellation_policy.estimated_refund_bdt)}
+                    </strong>
+                  </span>
+                  {Number(booking.cancellation_policy.forfeited_fee_bdt) > 0 && (
+                    <span className="text-ember">
+                      Retained Seat Fee:{" "}
+                      {formatBdt(booking.cancellation_policy.forfeited_fee_bdt)}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                  <input
+                    type="text"
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Optional note (e.g., Flight delayed, change of plans)"
+                    className="flex-1 px-3 py-2 bg-charcoal border border-brass/25 text-xs font-sans text-cream placeholder:text-sand/50 focus:outline-none focus:border-brass"
+                  />
+                  <button
+                    type="button"
+                    disabled={cancelling}
+                    onClick={() => void handleCancelBooking()}
+                    className="px-4 py-2.5 bg-ember hover:bg-ember/90 disabled:opacity-60 text-cream font-syne text-[10px] font-bold uppercase tracking-[0.18em] transition-colors shrink-0"
+                  >
+                    {cancelling
+                      ? "Releasing Table..."
+                      : "Confirm Cancellation & Release Seat"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCancelConfirmOpen(false)}
+                    className="px-3 py-2 border border-brass/25 text-sand hover:text-cream font-mono text-[10px] uppercase tracking-[0.16em]"
+                  >
+                    Keep Seat
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </motion.div>
     </div>
   );
@@ -700,7 +910,7 @@ export default function BookingPassPage({
     <Suspense
       fallback={
         <div className="min-h-screen bg-obsidian pt-36 px-4 text-center font-mono text-sm text-brass">
-          Retrieving Digital Boarding Pass {referenceCode}...
+          Retrieving Reservation Pass {referenceCode}...
         </div>
       }
     >

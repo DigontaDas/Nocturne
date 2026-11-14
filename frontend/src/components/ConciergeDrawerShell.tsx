@@ -4,10 +4,6 @@ import { Fragment, ReactNode, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  Cpu,
   FileText,
   Loader2,
   MapPin,
@@ -18,19 +14,17 @@ import {
   X,
 } from "lucide-react";
 import {
-  fetchConciergeStatus,
   formatBdt,
   getOrCreateSessionId,
   holdTable,
   releaseTableHold,
   streamConcierge,
 } from "@/lib/api";
+import { getDishImageClass } from "@/lib/dish-media";
 import { useReservationContext } from "@/context/ReservationContext";
 import {
   ConciergeCardPayload,
   ConciergeCitation,
-  ConciergeLlmStatus,
-  ConciergeTrace,
 } from "@/types/nocturne";
 
 const SAMPLE_PROMPT =
@@ -167,7 +161,6 @@ interface ChatTurn {
   id: string;
   role: "user" | "assistant";
   content: string;
-  traces?: ConciergeTrace[];
   citations?: ConciergeCitation[];
   cards?: ConciergeCardPayload | null;
   provider?: string;
@@ -198,10 +191,8 @@ export function ConciergeDrawerShell() {
         "Welcome to Nocturne Dhaka. Ask me about live quiet acoustic tables, allergen-safe wood-fired dishes, or zero-proof mocktail pairings within your BDT budget.",
     },
   ]);
-  const [showTraces, setShowTraces] = useState<boolean>(true);
   const [actionSuccessId, setActionSuccessId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [llmStatus, setLlmStatus] = useState<ConciergeLlmStatus | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   const sendPromptRef = useRef<(promptText: string) => Promise<void>>(async () => {});
@@ -212,19 +203,6 @@ export function ConciergeDrawerShell() {
     // Scroll ONLY the inner chat viewport so outer document scroll position stays pinned
     el.scrollTop = el.scrollHeight;
   }, [messages, conciergeOpen]);
-
-  useEffect(() => {
-    if (!conciergeOpen) return;
-    let active = true;
-    fetchConciergeStatus()
-      .then((res) => {
-        if (active) setLlmStatus(res);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [conciergeOpen]);
 
   useEffect(() => {
     if (conciergeOpen && pendingConciergePrompt && !isStreaming) {
@@ -252,7 +230,6 @@ export function ConciergeDrawerShell() {
       id: assistantId,
       role: "assistant",
       content: "",
-      traces: [],
       citations: [],
       cards: null,
     };
@@ -278,20 +255,6 @@ export function ConciergeDrawerShell() {
           history,
         },
         {
-          onTrace: (trace) => {
-            setMessages((prev) =>
-              prev.map((m) => {
-                if (m.id !== assistantId) return m;
-                const existing = m.traces || [];
-                const idx = existing.findIndex((t) => t.id === trace.id);
-                const nextTraces =
-                  idx >= 0
-                    ? existing.map((t, i) => (i === idx ? trace : t))
-                    : [...existing, trace];
-                return { ...m, traces: nextTraces };
-              })
-            );
-          },
           onCitation: (citation) => {
             setMessages((prev) =>
               prev.map((m) => {
@@ -445,13 +408,10 @@ export function ConciergeDrawerShell() {
                 </div>
                 <div className="min-w-0">
                   <h2 className="font-display text-base sm:text-lg uppercase tracking-[0.12em] text-cream leading-none truncate">
-                    Culinary Concierge
+                    Maître d&apos; &amp; Sommelier
                   </h2>
                   <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-brass mt-1.5 truncate">
-                    {llmStatus?.live_llm
-                      ? `${llmStatus.provider} (${llmStatus.model})`
-                      : "SQL + pgvector Hybrid RAG"}{" "}
-                    &bull; {selectedSlot} ({partySize}P)
+                    Private Dining Desk &bull; {selectedSlot} ({partySize}P)
                   </p>
                 </div>
               </div>
@@ -485,7 +445,7 @@ export function ConciergeDrawerShell() {
                 >
                   <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-brass mb-1.5">
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>Tap to Run Live SQL + pgvector Query</span>
+                    <span>Ask Our Sommelier</span>
                   </div>
                   <p className="text-xs font-sans text-cream/90 leading-relaxed font-light group-hover:text-cream">
                     &ldquo;{SAMPLE_PROMPT}&rdquo;
@@ -506,57 +466,14 @@ export function ConciergeDrawerShell() {
                     </div>
                   ) : (
                     <div className="w-full space-y-3">
-                      {/* Tool Execution Traces */}
-                      {msg.traces && msg.traces.length > 0 && (
-                        <div className="rounded-xl bg-obsidian/80 border border-brass/15 p-3">
-                          <button
-                            type="button"
-                            onClick={() => setShowTraces((v) => !v)}
-                            className="w-full flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.2em] text-brass"
-                          >
-                            <span className="inline-flex items-center gap-1.5">
-                              <Cpu className="w-3.5 h-3.5" />
-                              Live Tool Execution Traces ({msg.traces.length})
-                            </span>
-                            {showTraces ? (
-                              <ChevronUp className="w-3.5 h-3.5" />
-                            ) : (
-                              <ChevronDown className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                          {showTraces && (
-                            <div className="mt-2.5 space-y-1.5">
-                              {msg.traces.map((trace) => (
-                                <div
-                                  key={trace.id}
-                                  className="flex items-start gap-2 text-[11px] font-mono"
-                                >
-                                  {trace.status === "running" ? (
-                                    <Loader2 className="w-3.5 h-3.5 text-brass animate-spin shrink-0 mt-0.5" />
-                                  ) : (
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-sage shrink-0 mt-0.5" />
-                                  )}
-                                  <div className="min-w-0">
-                                    <span className="text-cream">{trace.label}</span>
-                                    <div className="text-sand/80 text-[10px] truncate">
-                                      {trace.detail}
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Formatted Editorial Markdown Response */}
+                      {/* Formatted Editorial Response */}
                       <div className="rounded-2xl rounded-bl-sm bg-obsidian/92 border border-brass/25 px-4 py-3.5">
                         {msg.content ? (
                           <EditorialMarkdown content={msg.content} />
                         ) : (
                           <span className="inline-flex items-center gap-2 text-xs font-mono text-brass/80">
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            Consulting SQL tables &amp; chef notes...
+                            Checking table availability &amp; kitchen notes...
                           </span>
                         )}
                       </div>
@@ -620,7 +537,10 @@ export function ConciergeDrawerShell() {
                                       <img
                                         src={dish.image_url}
                                         alt={dish.name}
-                                        className="w-full h-full object-cover mix-blend-lighten"
+                                        className={getDishImageClass(
+                                          dish.image_url,
+                                          "mix-blend-lighten"
+                                        )}
                                       />
                                     </div>
                                     <div className="min-w-0">

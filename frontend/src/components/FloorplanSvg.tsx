@@ -650,7 +650,7 @@ export function FloorplanSvg({
       <div className="px-5 py-3 bg-obsidian/70 border-t border-brass/10 flex items-center justify-between text-xs text-sand font-mono">
         <span className="inline-flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-brass" />
-          Tip: Need help choosing? Press Ctrl+J for AI Concierge seating advice.
+          Tip: Press Ctrl+J anytime to ask our Maître d&apos; &amp; Sommelier for seating advice.
         </span>
         <span className="hidden sm:inline">Drag canvas to pan · Click table for perspective</span>
       </div>

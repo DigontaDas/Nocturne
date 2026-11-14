@@ -816,6 +816,19 @@ export const FALLBACK_BOOKING: ReservationOut = {
   payment_reference: "BKA-NOCTURNE-9941",
   paid_amount_bdt: 3100,
   paid_at: new Date().toISOString(),
+  refund_amount_bdt: 0,
+  refunded_at: null,
+  cancellation_reason: null,
+  cancelled_at: null,
+  cancellation_policy: {
+    can_cancel: true,
+    policy_tier: "FREE_FULL_REFUND",
+    hours_until_seating: 12,
+    estimated_refund_bdt: 3100,
+    forfeited_fee_bdt: 0,
+    policy_summary:
+      "Complimentary full refund applies up to 4 hours prior to your seating window.",
+  },
   version: 1,
   created_at: new Date().toISOString(),
   items: [

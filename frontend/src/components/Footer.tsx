@@ -22,7 +22,7 @@ export function Footer() {
 
         <div className="md:col-span-4 space-y-2 text-sm">
           <div className="font-syne text-[11px] uppercase tracking-[0.24em] text-brass mb-3">
-            Seating Telemetry
+            Evening Service Hours
           </div>
           <p className="font-mono text-xs text-cream/90 tabular-nums">
             19:00 Sunset · 20:30 Prime · 22:00 Late Night
@@ -39,14 +39,14 @@ export function Footer() {
             className="inline-flex items-center gap-2 px-5 py-2.5 border border-brass/35 bg-charcoal hover:border-brass font-syne text-xs uppercase tracking-[0.18em] text-cream transition-colors"
             data-cursor="RESERVE"
           >
-            <span>Open AI Concierge</span>
+            <span>Maître d&apos; &amp; Sommelier</span>
             <span className="font-mono text-brass">[⌘J]</span>
           </button>
           <Link
             href="/booking/NOC-2026-9941"
             className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-wider text-sand hover:text-brass transition-colors"
           >
-            <span>Inspect Sample Boarding Pass</span>
+            <span>Sample Reservation Pass</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </Link>
         </div>

@@ -1,15 +1,28 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Clock, Eye, Lock, Minus, Plus, Users, Volume2 } from "lucide-react";
+import {
+  ArrowRight,
+  Calendar,
+  Clock,
+  Eye,
+  Lock,
+  Minus,
+  Plus,
+  Search,
+  Users,
+  Volume2,
+} from "lucide-react";
 import {
   fetchMenuItems,
   fetchTables,
   fetchZones,
   getOrCreateSessionId,
   holdTable,
+  lookupReservations,
   releaseTableHold,
 } from "@/lib/api";
 import { FALLBACK_MENU_ITEMS, FALLBACK_TABLES, FALLBACK_ZONES } from "@/lib/fallback-data";
@@ -20,12 +33,17 @@ import {
   TablePerspectiveDrawer,
 } from "@/components/TablePerspectiveDrawer";
 import { MenuCustomizerSection } from "@/components/MenuCustomizerSection";
-import { RestaurantTable } from "@/types/nocturne";
+import { ReservationOut, RestaurantTable } from "@/types/nocturne";
 
 const TIME_SLOTS = ["19:00", "20:30", "22:00"] as const;
 
 function ReserveStudioContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const [lookupInput, setLookupInput] = useState<string>("");
+  const [lookupResults, setLookupResults] = useState<ReservationOut[] | null>(null);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [lookingUp, setLookingUp] = useState<boolean>(false);
   const {
     selectedDate,
     setSelectedDate,
@@ -217,13 +235,45 @@ function ReserveStudioContent() {
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
+  const handleLookupBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = lookupInput.trim();
+    if (!clean) return;
+    setLookingUp(true);
+    setLookupError(null);
+    setLookupResults(null);
+    try {
+      const upper = clean.toUpperCase();
+      if (upper.startsWith("NOC-")) {
+        router.push(`/booking/${encodeURIComponent(upper)}`);
+        return;
+      }
+      const matches = await lookupReservations({ phone: clean });
+      if (matches.length === 1) {
+        router.push(`/booking/${encodeURIComponent(matches[0].reference_code)}`);
+        return;
+      }
+      if (matches.length === 0) {
+        setLookupError("No bookings found matching that phone number or reference code.");
+      } else {
+        setLookupResults(matches);
+      }
+    } catch (err) {
+      setLookupError(
+        err instanceof Error ? err.message : "Could not look up reservation right now."
+      );
+    } finally {
+      setLookingUp(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-obsidian pt-28 pb-20 px-4 sm:px-8 max-w-7xl mx-auto">
-      {/* Studio Header + Live Hold Telemetry */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8 border-b border-brass/20 pb-6">
+      {/* Header & Dining Window Controls */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-6 border-b border-brass/20 pb-6">
         <div>
           <span className="font-mono text-[11px] uppercase tracking-[0.28em] text-brass">
-            01 / Interactive 2D Architectural Seat-Picker
+            Floorplan &amp; Table Selection
           </span>
           <h1 className="mt-2 font-display text-3xl sm:text-5xl uppercase tracking-[0.06em] text-cream leading-[1.04]">
             Lock Your Table &amp;{" "}
@@ -370,6 +420,71 @@ function ReserveStudioContent() {
         </div>
       </div>
 
+      {/* Find or Manage Existing Reservation */}
+      <div className="mb-6 bg-charcoal/55 border border-brass/20 px-4 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="text-xs font-sans text-sand/90">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-brass mr-2">
+            Manage Booking
+          </span>
+          Enter a booking reference (<span className="font-mono text-cream">NOC-2026-...</span>) or phone number to review refunds, cancel, or settle early.
+        </div>
+
+        <form onSubmit={handleLookupBooking} className="flex items-stretch gap-2 shrink-0">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-obsidian border border-brass/25 focus-within:border-brass">
+            <Search className="w-3.5 h-3.5 text-brass/80" />
+            <input
+              type="text"
+              value={lookupInput}
+              onChange={(e) => setLookupInput(e.target.value)}
+              placeholder="NOC-2026-9941 or +88017..."
+              aria-label="Lookup booking by reference code or phone"
+              className="bg-transparent font-mono text-xs text-cream placeholder:text-sand/50 focus:outline-none w-48 sm:w-56"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={lookingUp || !lookupInput.trim()}
+            className="px-4 py-1.5 bg-obsidian border border-brass/45 hover:border-brass hover:bg-brass hover:text-obsidian disabled:opacity-50 text-brass font-syne text-[10px] font-bold uppercase tracking-[0.18em] transition-colors flex items-center gap-1.5"
+          >
+            <span>{lookingUp ? "Finding..." : "Open Pass"}</span>
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </form>
+      </div>
+
+      {lookupError && (
+        <div className="mb-5 border border-ember/40 bg-ember/10 px-4 py-2.5 text-xs font-mono text-ember">
+          {lookupError}
+        </div>
+      )}
+
+      {lookupResults && lookupResults.length > 0 && (
+        <div className="mb-6 border border-brass/30 bg-charcoal p-4 space-y-2.5">
+          <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-brass">
+            Matching Reservations ({lookupResults.length})
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            {lookupResults.map((res) => (
+              <Link
+                key={res.reference_code}
+                href={`/booking/${res.reference_code}`}
+                className="flex items-center justify-between gap-3 px-3.5 py-2.5 bg-obsidian border border-brass/25 hover:border-brass transition-colors"
+              >
+                <div className="min-w-0">
+                  <div className="font-mono text-xs text-brass font-semibold">
+                    {res.reference_code} &bull; {res.table_code}
+                  </div>
+                  <div className="font-sans text-[11px] text-sand truncate">
+                    {res.reservation_date} @ {res.time_slot} &middot; {res.status}
+                  </div>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-brass shrink-0" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Main 65% / 35% Split Canvas + Perspective Drawer */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-8 space-y-4">
@@ -474,7 +589,7 @@ export default function ReservePage() {
     <Suspense
       fallback={
         <div className="min-h-screen bg-obsidian pt-32 px-8 text-center font-mono text-sm text-brass">
-          Loading Nocturne Floorplan Studio...
+          Loading Nocturne Floorplan...
         </div>
       }
     >

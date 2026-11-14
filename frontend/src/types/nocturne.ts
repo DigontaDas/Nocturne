@@ -5,8 +5,17 @@ export type ReservationStatus =
   | "CONFIRMED"
   | "SEATED"
   | "COMPLETED"
-  | "CANCELLED";
-export type PaymentStatus = "UNPAID" | "PENDING" | "PAID" | "FAILED" | "CANCELLED";
+  | "CANCELLED"
+  | "NO_SHOW";
+export type PaymentStatus =
+  | "UNPAID"
+  | "PENDING"
+  | "PAID"
+  | "FAILED"
+  | "CANCELLED"
+  | "REFUNDED"
+  | "PARTIALLY_REFUNDED"
+  | "FORFEITED";
 export type PaymentMethod = "PAY_AT_VENUE" | "BKASH" | "CARD";
 export type PaymentGateway = "bkash" | "card";
 
@@ -116,6 +125,20 @@ export interface ReservationItemOut {
   unit_price_bdt: number | string;
 }
 
+export interface CancellationPolicyPreview {
+  can_cancel: boolean;
+  policy_tier:
+    | "FREE_FULL_REFUND"
+    | "LAST_MINUTE_PARTIAL"
+    | "LAST_MINUTE_FORFEIT"
+    | "UNPAID_FREE_CANCEL"
+    | "NOT_CANCELLABLE";
+  hours_until_seating: number;
+  estimated_refund_bdt: number | string;
+  forfeited_fee_bdt: number | string;
+  policy_summary: string;
+}
+
 export interface ReservationOut {
   id: number;
   reference_code: string;
@@ -136,9 +159,22 @@ export interface ReservationOut {
   payment_reference?: string | null;
   paid_amount_bdt?: number | string;
   paid_at?: string | null;
+  refund_amount_bdt?: number | string;
+  refunded_at?: string | null;
+  cancellation_reason?: string | null;
+  cancelled_at?: string | null;
+  cancellation_policy?: CancellationPolicyPreview | null;
   version: number;
   created_at: string;
   items: ReservationItemOut[];
+}
+
+export interface ReservationLifecycleResponse {
+  message: string;
+  refund_amount_bdt: number | string;
+  forfeited_fee_bdt: number | string;
+  table_released: boolean;
+  reservation: ReservationOut;
 }
 
 export interface PaymentConfigOut {

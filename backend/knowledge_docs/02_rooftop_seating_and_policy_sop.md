@@ -20,3 +20,10 @@ Selecting any available table on the interactive floorplan triggers an atomic **
 - **Grace Period:** Held reservations remain guaranteed for 15 minutes past the booked slot. Pre-ordered dishes fire on the hearth only when you check in at the host podium (or 10 minutes prior upon arrival confirmation).
 - **Monsoon Retractable Canopy:** The Skyline Rooftop features a whisper-quiet motorized glass pergola that seals within 45 seconds during sudden Dhaka rain while preserving 270-degree skyline visibility.
 - **Dress Code:** Smart Evening / Elevated Casual. Tailored shirts, evening wear, and smart footwear are welcomed; beach flip-flops and sleeveless athletic vests are politely declined.
+
+## §2.3 Cancellation, Last-Minute Fees, No-Shows & Refunds
+Nocturne balances guest flexibility with limited rooftop inventory (`18` total tables):
+- **Free Early Cancellation (4+ Hours Before Seating):** Cancelling at least 4 hours prior to your reserved slot unlocks the table immediately and triggers a **100% automatic refund** of any paid deposit or pre-order back to your original bKash or card method.
+- **Last-Minute Cancellation (< 4 Hours Before Seating):** Within 4 hours of seating, the **৳ 1,000** table hold fee is retained to cover held skyline inventory, while **100% of any unfired pre-ordered food balance above ৳ 1,000** is refunded automatically. Table-only deposits (৳ 1,000) paid at confirmation are forfeited under last-minute cancellation.
+- **No-Show Policy (Past 15-Minute Grace Window):** If a party fails to arrive within 15 minutes of the seating time without notice, the host podium releases the table to standby guests (`NO_SHOW`). The **৳ 1,000** table hold fee is forfeited, and any surplus pre-paid course amount above ৳ 1,000 is refunded since the kitchen never fired the order.
+- **After Check-In (`SEATED`):** Once checked in and kitchen preparation begins, reservations cannot be cancelled online. Please speak with the Maître d' directly at the host podium.

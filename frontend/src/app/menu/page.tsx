@@ -33,7 +33,7 @@ function MenuPageContent() {
       <div className="mb-6 flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-brass/20 pb-8">
         <div>
           <span className="font-mono text-[11px] uppercase tracking-[0.28em] text-brass">
-            Culinary Architecture &bull; 12 Wood-Fired Plates
+            Seasonal Tasting Menu &bull; 12 Wood-Fired Plates
           </span>
           <h1 className="mt-3 font-display text-4xl sm:text-5xl lg:text-6xl uppercase tracking-[0.06em] text-cream leading-[1.02]">
             The Nocturne{" "}
@@ -62,7 +62,7 @@ function MenuPageContent() {
             data-cursor="RESERVE"
             className="inline-flex items-center gap-2 px-5 py-3 bg-brass hover:bg-brass-soft text-obsidian font-syne text-[10px] font-bold uppercase tracking-[0.22em] transition-colors"
           >
-            <span>2D Seat-Picker Studio</span>
+            <span>Floorplan &amp; Seat Selection</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

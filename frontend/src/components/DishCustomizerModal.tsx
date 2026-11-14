@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Check, Clock, Flame, Plus, ShieldCheck, X } from "lucide-react";
 import { formatBdt } from "@/lib/api";
+import { getDishImageClass } from "@/lib/dish-media";
 import { MenuItem, TrayItem } from "@/types/nocturne";
 
 interface DishCustomizerModalProps {
@@ -156,7 +157,7 @@ export function DishCustomizerModal({
                 <img
                   src={dish.image_url}
                   alt={dish.name}
-                  className="w-full h-full object-cover mix-blend-lighten scale-[1.04]"
+                  className={getDishImageClass(dish.image_url, "mix-blend-lighten")}
                 />
               </motion.div>
 

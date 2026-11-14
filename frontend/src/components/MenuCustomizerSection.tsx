@@ -24,6 +24,7 @@ import {
   getOrCreateSessionId,
   initEarlyPayment,
 } from "@/lib/api";
+import { getDishImageClass } from "@/lib/dish-media";
 import { useReservationContext } from "@/context/ReservationContext";
 import { PlanetaryDishWheel } from "@/components/PlanetaryDishWheel";
 import { MenuItem, PaymentConfigOut, PaymentMethod } from "@/types/nocturne";
@@ -251,8 +252,8 @@ export function MenuCustomizerSection({
               initialDishSlug={initialDishSlug}
               sectionLabel={
                 standalone
-                  ? "Curated Tasting Arch"
-                  : "03 / Pre-Order Tasting Arch"
+                  ? "Seasonal Tasting Menu"
+                  : "Pre-Order Tasting Menu"
               }
               titlePrefix="Compose"
               titleItalic="Sequence"
@@ -298,8 +299,8 @@ export function MenuCustomizerSection({
               <div className="border border-dashed border-brass/30 bg-obsidian/45 p-6 text-center space-y-3">
                 <Sparkles className="w-4 h-4 text-brass mx-auto" />
                 <p className="font-sans text-xs text-sand/85 font-light leading-relaxed">
-                  Dial or drag the Bottom-Arch Wheel above to bring a plate into 12 o’clock,
-                  customize portions &amp; spice, or open the AI Concierge for 1-click pairings.
+                  Dial or swipe the tasting wheel above to inspect a dish, customize portions &amp;
+                  spice, or consult our Sommelier for 1-click pairings.
                 </p>
                 <button
                   type="button"
@@ -326,7 +327,7 @@ export function MenuCustomizerSection({
                         <img
                           src={item.menuItem.image_url}
                           alt={item.menuItem.name}
-                          className="w-full h-full object-cover mix-blend-lighten"
+                          className={getDishImageClass(item.menuItem.image_url, "mix-blend-lighten")}
                         />
                       </div>
                       <div className="min-w-0">
@@ -532,7 +533,7 @@ export function MenuCustomizerSection({
                       bKash
                     </div>
                     <div className="font-mono text-[9px] text-sand/70 mt-0.5">
-                      {paymentConfig?.bkash.configured ? "Live Gateway" : "Sandbox"}
+                      {paymentConfig?.bkash.configured ? "bKash App" : "Test Checkout"}
                     </div>
                   </button>
 
@@ -550,7 +551,7 @@ export function MenuCustomizerSection({
                       Card
                     </div>
                     <div className="font-mono text-[9px] text-sand/70 mt-0.5">
-                      {paymentConfig?.card.configured ? "Visa · MC" : "Sandbox"}
+                      {paymentConfig?.card.configured ? "Visa · MC" : "Test Checkout"}
                     </div>
                   </button>
                 </div>

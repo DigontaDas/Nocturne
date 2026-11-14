@@ -36,7 +36,6 @@ export function HeroSection() {
   const titleLeftRef = useRef<HTMLDivElement | null>(null);
   const titleRightRef = useRef<HTMLDivElement | null>(null);
   const bookingBarRef = useRef<HTMLFormElement | null>(null);
-  const scrollHintRef = useRef<HTMLDivElement | null>(null);
 
   useGSAP(
     () => {
@@ -87,15 +86,6 @@ export function HeroSection() {
               y: 50,
               opacity: 0.14,
               ease: "power2.out",
-            },
-            0
-          )
-          .to(
-            scrollHintRef.current,
-            {
-              opacity: 0,
-              y: -12,
-              ease: "power1.out",
             },
             0
           )
@@ -150,13 +140,13 @@ export function HeroSection() {
         >
           <div>
             <p className="font-syne text-[9.5px] sm:text-xs uppercase tracking-[0.28em] sm:tracking-[0.34em] text-brass/90 mb-1.5 sm:mb-2">
-              01 / Banani Rooftop • Level 14
+              Banani Rooftop · Level 14
             </p>
             <h1 className="font-display text-3xl sm:text-5xl lg:text-[5.1rem] tracking-[0.2em] sm:tracking-[0.22em] text-cream leading-none">
               RESERVE
             </h1>
             <p className="mt-3 max-w-xs font-sans text-xs sm:text-sm font-light text-sand/85 leading-relaxed hidden md:block">
-              Architect-drawn skyline tables, white-oak ember dining, and live two-phase seat locking.
+              Private skyline tables, white-oak ember dining, and instant table confirmation.
             </p>
           </div>
           <div className="md:hidden text-right">
@@ -175,7 +165,7 @@ export function HeroSection() {
           className="hidden md:block pointer-events-none absolute bottom-36 right-12 z-20 text-right select-none"
         >
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-brass/80 mb-1">
-            44 dB — 66 dB Metered Sightlines
+            Open-Fire Grill · Lakeside Acoustic Terrace
           </p>
           <div className="font-serif italic text-6xl lg:text-[6rem] text-brass leading-[0.88] tracking-tight">
             Perspective
@@ -217,18 +207,7 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* Minimalist Scroll Cue */}
-        <div
-          ref={scrollHintRef}
-          className="pointer-events-none absolute bottom-28 sm:bottom-32 left-6 sm:left-12 z-20 hidden lg:flex items-center gap-3"
-        >
-          <div className="w-12 h-px bg-brass/60" />
-          <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-sand/80">
-            Scroll to Expand Viewport
-          </span>
-        </div>
-
-        {/* Architectural 1px Brass Hairline Quick Booking Bar */}
+        {/* Brass Hairline Quick Booking Bar */}
         <div className="w-full md:absolute md:bottom-7 md:inset-x-0 z-30 md:px-8">
           <form
             ref={bookingBarRef}
@@ -320,13 +299,13 @@ export function HeroSection() {
               <button
                 type="button"
                 onClick={() => setConciergeOpen(true)}
-                aria-label="Open AI Culinary Concierge"
+                aria-label="Ask our Concierge"
                 className="px-4 py-3.5 bg-charcoal/80 hover:bg-charcoal text-brass hover:text-cream transition-colors flex items-center justify-center gap-1.5"
-                title="AI Culinary Concierge (Ctrl+J)"
+                title="Sommelier & Maître d' (Ctrl+J)"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span className="font-mono text-[10px] uppercase tracking-[0.18em] hidden sm:inline">
-                  AI
+                  Concierge
                 </span>
               </button>
             </div>

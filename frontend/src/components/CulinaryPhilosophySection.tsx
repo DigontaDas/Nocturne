@@ -138,19 +138,19 @@ export function CulinaryPhilosophySection() {
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-10 border-b border-brass/20">
           <div>
             <span className="font-mono text-[11px] uppercase tracking-[0.28em] text-brass">
-              04 / Split-Curtain Intelligence Reveal
+              Private Hospitality &amp; Craft
             </span>
             <h2 className="mt-3 font-display text-3xl sm:text-5xl text-cream tracking-[0.06em] uppercase leading-[1.04]">
               Zero-Proof{" "}
               <span className="font-serif italic font-normal normal-case tracking-normal text-brass">
-                Alchemy &amp; RAG
+                Cellar &amp; Table
               </span>
             </h2>
           </div>
 
           <p className="max-w-md font-sans text-sm text-sand/85 font-light leading-relaxed">
-            Grounded directly in Nocturne’s Chef allergen matrices, Banani dB acoustic maps, and
-            live Redis table availability.
+            Guided by Executive Chef allergen protocols, serene terrace acoustics, and real-time
+            Banani rooftop seating availability.
           </p>
         </div>
 
@@ -199,7 +199,7 @@ export function CulinaryPhilosophySection() {
               <div className="flex items-center justify-between gap-2 pb-4 border-b border-brass/20">
                 <span className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.26em] text-brass">
                   <Sparkles className="w-3.5 h-3.5" />
-                  LangChain + pgvector
+                  Maître d&apos; Desk
                 </span>
                 <span className="font-mono text-[10px] text-cream/70 border border-brass/25 px-2 py-0.5">
                   Ctrl + J
@@ -213,8 +213,8 @@ export function CulinaryPhilosophySection() {
                 </span>
               </h3>
               <p className="mt-2 font-sans text-xs text-sand/85 leading-relaxed font-light">
-                Stream real-time table acoustics, strict allergen safety protocols, and zero-proof
-                pairing suggestions within your BDT budget.
+                Live seating availability, dedicated allergen preparation notes, and zero-proof
+                pairing suggestions within your evening budget.
               </p>
 
               {/* Curated One-Click Prompt Triggers */}
@@ -271,7 +271,7 @@ export function CulinaryPhilosophySection() {
                   18 Architectural Tables
                 </div>
               </div>
-              <span className="w-2 h-2 rounded-full bg-sage animate-pulse" title="Live Telemetry" />
+              <span className="w-2 h-2 rounded-full bg-sage animate-pulse" title="Live Availability" />
             </div>
 
             {/* Miniature 2D SVG Architectural Blueprint */}

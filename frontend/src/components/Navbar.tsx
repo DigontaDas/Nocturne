@@ -201,7 +201,7 @@ export function Navbar() {
             <Link
               href="/reserve"
               className="hidden sm:flex items-center divide-x divide-brass/20 border border-brass/25 bg-charcoal/55 hover:border-brass/55 transition-colors"
-              title="Inspect live evening seat telemetry"
+              title="Inspect active seating & dining window"
             >
               {heldTable ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-2 text-ember font-mono text-[10.5px] uppercase tracking-wider tabular-nums">
@@ -235,7 +235,7 @@ export function Navbar() {
               <Sparkles className="w-3.5 h-3.5 text-brass group-hover:rotate-12 transition-transform" />
               <span className="font-syne text-[10px] sm:text-[10.5px] uppercase tracking-[0.2em]">
                 <span className="hidden xs:inline sm:inline">Concierge</span>
-                <span className="sm:hidden">AI</span>
+                <span className="sm:hidden">Ask</span>
               </span>
               <span className="hidden md:inline font-mono text-[9.5px] text-brass/85 border-l border-brass/25 pl-2">
                 ⌘J
@@ -332,7 +332,7 @@ export function Navbar() {
                 className="w-full py-3.5 px-4 border border-brass/40 bg-charcoal text-cream font-syne text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-2"
               >
                 <Sparkles className="w-4 h-4 text-brass" />
-                <span>Ask Llama Culinary Concierge</span>
+                <span>Ask Our Maître d&apos; &amp; Sommelier</span>
               </button>
 
               <Link

@@ -180,7 +180,7 @@ async def seed_database(db: AsyncSession) -> dict[str, int]:
                     Reservation.table_id == target_table.id,
                     Reservation.reservation_date == sb["reservation_date"],
                     Reservation.time_slot == sb["time_slot"],
-                    Reservation.status != "CANCELLED",
+                    Reservation.status.notin_(("CANCELLED", "NO_SHOW")),
                 )
             )
         ).scalar_one_or_none()

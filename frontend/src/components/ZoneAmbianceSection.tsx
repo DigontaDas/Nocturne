@@ -117,10 +117,10 @@ export function ZoneAmbianceSection() {
           <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4 border-b border-brass/25 pb-3 bg-obsidian/70 backdrop-blur-md px-4 py-2.5">
             <div className="flex items-center gap-3">
               <span className="font-mono text-[10px] uppercase tracking-[0.26em] sm:tracking-[0.3em] text-brass">
-                03 / Architectural Wings
+                Dining Wings
               </span>
               <span className="hidden lg:inline font-mono text-[10px] text-sand/70">
-                Scroll horizontally through {orderedZones.length} sensory environments
+                Explore {orderedZones.length} rooftop dining environments
               </span>
             </div>
 

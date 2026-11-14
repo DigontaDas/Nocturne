@@ -51,7 +51,7 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Nocturne — Rooftop Fine Dining & AI Culinary Concierge (Dhaka)",
+  title: "Nocturne — Rooftop Fine Dining & Skyline Sanctuary (Dhaka)",
   description:
     "Reserve your exact architectural table perspective, spin the seasonal tasting sequence, and dine at Banani Road 11's 14th-floor penthouse.",
   icons: {

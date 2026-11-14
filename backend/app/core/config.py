@@ -44,6 +44,8 @@ class Settings(BaseSettings):
 
     FRONTEND_URL: str = "http://localhost:3300"
     TABLE_DEPOSIT_BDT: int = 1000
+    FREE_CANCELLATION_HOURS: int = 4
+    NO_SHOW_GRACE_MINUTES: int = 15
 
     # bKash Tokenized Checkout (aligned with Clarity server/services/bkash.js)
     BKASH_GRANT_URL: str = (

@@ -9,8 +9,19 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 TableShape = Literal["ROUND_2", "RECT_4", "BOOTH_6"]
 TableStatus = Literal["AVAILABLE", "HELD_BY_YOU", "HELD_BY_OTHERS", "BOOKED"]
-ReservationStatus = Literal["HELD", "CONFIRMED", "SEATED", "COMPLETED", "CANCELLED"]
-PaymentStatus = Literal["UNPAID", "PENDING", "PAID", "FAILED", "CANCELLED"]
+ReservationStatus = Literal[
+    "HELD", "CONFIRMED", "SEATED", "COMPLETED", "CANCELLED", "NO_SHOW"
+]
+PaymentStatus = Literal[
+    "UNPAID",
+    "PENDING",
+    "PAID",
+    "FAILED",
+    "CANCELLED",
+    "REFUNDED",
+    "PARTIALLY_REFUNDED",
+    "FORFEITED",
+]
 PaymentMethod = Literal["PAY_AT_VENUE", "BKASH", "CARD"]
 PaymentGateway = Literal["bkash", "card"]
 
@@ -138,6 +149,21 @@ class ReservationItemOut(BaseModel):
     unit_price_bdt: Decimal
 
 
+class CancellationPolicyPreview(BaseModel):
+    can_cancel: bool
+    policy_tier: Literal[
+        "FREE_FULL_REFUND",
+        "LAST_MINUTE_PARTIAL",
+        "LAST_MINUTE_FORFEIT",
+        "UNPAID_FREE_CANCEL",
+        "NOT_CANCELLABLE",
+    ]
+    hours_until_seating: float
+    estimated_refund_bdt: Decimal = Decimal("0.00")
+    forfeited_fee_bdt: Decimal = Decimal("0.00")
+    policy_summary: str
+
+
 class ReservationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -160,9 +186,32 @@ class ReservationOut(BaseModel):
     payment_reference: str | None = None
     paid_amount_bdt: Decimal = Decimal("0.00")
     paid_at: datetime | None = None
+    refund_amount_bdt: Decimal = Decimal("0.00")
+    refunded_at: datetime | None = None
+    cancellation_reason: str | None = None
+    cancelled_at: datetime | None = None
+    cancellation_policy: CancellationPolicyPreview | None = None
     version: int
     created_at: datetime
     items: list[ReservationItemOut] = Field(default_factory=list)
+
+
+class ReservationCancelRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=255)
+    guest_phone: str | None = Field(default=None, max_length=32)
+
+
+class ReservationNoShowRequest(BaseModel):
+    note: str | None = Field(default=None, max_length=255)
+    host_override: bool = False
+
+
+class ReservationLifecycleResponse(BaseModel):
+    message: str
+    refund_amount_bdt: Decimal = Decimal("0.00")
+    forfeited_fee_bdt: Decimal = Decimal("0.00")
+    table_released: bool = False
+    reservation: ReservationOut
 
 
 class GatewayStatusOut(BaseModel):

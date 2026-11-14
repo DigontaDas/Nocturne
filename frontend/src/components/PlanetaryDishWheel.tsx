@@ -14,6 +14,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import { Check, Flame, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { formatBdt } from "@/lib/api";
+import { getDishImageClass } from "@/lib/dish-media";
 import { useReservationContext } from "@/context/ReservationContext";
 import { DishCustomizerModal } from "@/components/DishCustomizerModal";
 import { MenuItem } from "@/types/nocturne";
@@ -106,11 +107,13 @@ function ArchWheelPlate({
     (offset) => getPlateMetrics(offset).pointerEvents
   );
 
-  // Plate self-rotation: each step spins the dish plate +45deg around its own center while traveling the curve
-  const plateSelfRotate = useTransform(smoothCursor, (cursor) => cursor * 45);
+  // Keep the active 12 o'clock plate upright (0deg) while flanking plates tilt gently along the arch
+  const plateSelfRotate = useTransform(wrappedOffset, (offset) => offset * 28);
 
   // Deterministic integer-rounded metrics during SSR & initial hydration pass prevent React float mismatches
-  const initial = getPlateMetrics(getWrappedOffset(index, 0, count));
+  const initialOffset = getWrappedOffset(index, 0, count);
+  const initial = getPlateMetrics(initialOffset);
+  const initialRotateDeg = Math.round(initialOffset * 28);
 
   return (
     <motion.button
@@ -146,14 +149,21 @@ function ArchWheelPlate({
       className="absolute rounded-full focus:outline-none group"
     >
       <motion.div
-        style={hydrated ? { rotate: plateSelfRotate } : { transform: "rotate(0deg)" }}
+        style={
+          hydrated
+            ? { rotate: plateSelfRotate }
+            : { transform: `rotate(${initialRotateDeg}deg)` }
+        }
         className="w-full h-full rounded-full overflow-hidden bg-obsidian border border-brass/35 shadow-[0_32px_70px_rgba(0,0,0,0.92)] flex items-center justify-center group-hover:border-brass transition-colors"
       >
         <img
           src={dish.image_url}
           alt={dish.name}
           draggable={false}
-          className="w-full h-full object-cover mix-blend-lighten scale-[1.06] pointer-events-none select-none"
+          className={getDishImageClass(
+            dish.image_url,
+            "mix-blend-lighten pointer-events-none select-none"
+          )}
         />
       </motion.div>
     </motion.button>
@@ -173,7 +183,7 @@ export function PlanetaryDishWheel({
   dishes,
   mode = "interactive",
   initialDishSlug,
-  sectionLabel = "02 / Signature Tasting Sequence",
+  sectionLabel = "Signature Tasting Sequence",
   titlePrefix = "Tasting",
   titleItalic = "Arch",
 }: PlanetaryDishWheelProps) {
@@ -399,7 +409,7 @@ export function PlanetaryDishWheel({
   return (
     <section
       ref={pinSectionRef}
-      className="relative w-full min-h-[700px] md:min-h-[820px] lg:h-[880px] overflow-hidden flex flex-col items-center justify-start pt-10 md:pt-12 pb-12 md:pb-0 bg-obsidian text-cream border-t border-brass/15 select-none"
+      className="relative w-full min-h-[700px] md:min-h-[880px] lg:h-[880px] overflow-hidden flex flex-col items-center justify-start pt-10 md:pt-12 pb-12 md:pb-0 bg-obsidian text-cream border-t border-brass/15 select-none"
     >
       {/* Subtle Radial Warm Glow Behind the 12 O'Clock Plate Apex */}
       <div
@@ -517,7 +527,7 @@ export function PlanetaryDishWheel({
               <img
                 src={prevDish.image_url}
                 alt={prevDish.name}
-                className="w-full h-full object-cover mix-blend-lighten"
+                className={getDishImageClass(prevDish.image_url, "mix-blend-lighten")}
               />
             </button>
           )}
@@ -531,7 +541,7 @@ export function PlanetaryDishWheel({
             <img
               src={activeDish.image_url}
               alt={activeDish.name}
-              className="w-full h-full object-cover mix-blend-lighten scale-[1.06]"
+              className={getDishImageClass(activeDish.image_url, "mix-blend-lighten")}
             />
           </button>
 
@@ -545,7 +555,7 @@ export function PlanetaryDishWheel({
               <img
                 src={nextDish.image_url}
                 alt={nextDish.name}
-                className="w-full h-full object-cover mix-blend-lighten"
+                className={getDishImageClass(nextDish.image_url, "mix-blend-lighten")}
               />
             </button>
           )}
@@ -653,7 +663,7 @@ export function PlanetaryDishWheel({
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
         data-cursor="DRAG"
-        className="hidden md:block pointer-events-auto absolute left-1/2 -translate-x-1/2 bottom-[-1020px] w-[1500px] h-[1500px] md:scale-[0.76] lg:scale-[0.9] xl:scale-100 origin-bottom cursor-grab active:cursor-grabbing"
+        className="hidden md:block pointer-events-auto absolute left-1/2 -translate-x-1/2 top-[400px] w-[1500px] h-[1500px] md:scale-[0.76] lg:scale-[0.9] xl:scale-100 origin-top cursor-grab active:cursor-grabbing"
       >
         {safeDishes.map((dish, idx) => (
           <ArchWheelPlate

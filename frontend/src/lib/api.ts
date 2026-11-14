@@ -10,6 +10,7 @@ import {
   PaymentInitResponse,
   PaymentMethod,
   PaymentVerifyResponse,
+  ReservationLifecycleResponse,
   ReservationOut,
   RestaurantTable,
   TableHoldResponse,
@@ -237,6 +238,30 @@ export async function fetchConciergeStatus(): Promise<ConciergeLlmStatus> {
   return res.json();
 }
 
+async function readApiErrorMessage(res: Response, fallback: string): Promise<string> {
+  const err = await res.json().catch(() => ({}));
+  if (typeof err?.detail === "string") return err.detail;
+  if (typeof err?.detail?.message === "string") return err.detail.message;
+  return `${fallback} (${res.status})`;
+}
+
+export async function lookupReservations(params: {
+  phone?: string;
+  reference_code?: string;
+}): Promise<ReservationOut[]> {
+  const query = new URLSearchParams();
+  if (params.reference_code?.trim()) {
+    query.set("reference_code", params.reference_code.trim().toUpperCase());
+  } else if (params.phone?.trim()) {
+    query.set("phone", params.phone.trim());
+  }
+  const res = await fetch(`${API_BASE_URL}/api/v1/reservations?${query.toString()}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(await readApiErrorMessage(res, "Lookup failed"));
+  return res.json();
+}
+
 export async function fetchReservation(referenceCode: string): Promise<ReservationOut> {
   const res = await fetch(
     `${API_BASE_URL}/api/v1/reservations/${encodeURIComponent(referenceCode)}`,
@@ -251,7 +276,39 @@ export async function checkInReservation(referenceCode: string): Promise<Reserva
     `${API_BASE_URL}/api/v1/reservations/${encodeURIComponent(referenceCode)}/check-in`,
     { method: "POST" }
   );
-  if (!res.ok) throw new Error(`Check-in failed (${res.status})`);
+  if (!res.ok) throw new Error(await readApiErrorMessage(res, "Check-in failed"));
+  return res.json();
+}
+
+export async function cancelReservation(
+  referenceCode: string,
+  payload: { reason?: string; guest_phone?: string } = {}
+): Promise<ReservationLifecycleResponse> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/v1/reservations/${encodeURIComponent(referenceCode)}/cancel`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+  if (!res.ok) throw new Error(await readApiErrorMessage(res, "Cancellation failed"));
+  return res.json();
+}
+
+export async function markReservationNoShow(
+  referenceCode: string,
+  payload: { note?: string; host_override?: boolean } = {}
+): Promise<ReservationLifecycleResponse> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/v1/reservations/${encodeURIComponent(referenceCode)}/no-show`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+  if (!res.ok) throw new Error(await readApiErrorMessage(res, "No-show update failed"));
   return res.json();
 }
 

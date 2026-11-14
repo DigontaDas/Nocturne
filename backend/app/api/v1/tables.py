@@ -75,7 +75,7 @@ async def hold_table(
                 Reservation.table_id == table.id,
                 Reservation.reservation_date == payload.reservation_date,
                 Reservation.time_slot == slot,
-                Reservation.status != "CANCELLED",
+                Reservation.status.notin_(("CANCELLED", "NO_SHOW")),
             )
         )
     ).scalar_one_or_none()

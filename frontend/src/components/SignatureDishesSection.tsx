@@ -17,7 +17,7 @@ export function SignatureDishesSection() {
     <PlanetaryDishWheel
       dishes={dishes}
       mode="pinned"
-      sectionLabel="02 / Signature Tasting Orbit"
+      sectionLabel="Signature Tasting Menu"
       titlePrefix="Chef's Table"
       titleItalic="Sequence"
     />

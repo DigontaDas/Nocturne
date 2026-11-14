@@ -111,8 +111,8 @@ class Reservation(Base):
             "reservation_date",
             "time_slot",
             unique=True,
-            postgresql_where=text("status != 'CANCELLED'"),
-            sqlite_where=text("status != 'CANCELLED'"),
+            postgresql_where=text("status NOT IN ('CANCELLED', 'NO_SHOW')"),
+            sqlite_where=text("status NOT IN ('CANCELLED', 'NO_SHOW')"),
         ),
     )
 
@@ -143,6 +143,12 @@ class Reservation(Base):
         Numeric(10, 2), nullable=False, default=Decimal("0.00"), server_default="0.00"
     )
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    refund_amount_bdt: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=Decimal("0.00"), server_default="0.00"
+    )
+    refunded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancellation_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -169,6 +175,9 @@ class PaymentTransaction(Base):
         index=True,
     )
     gateway: Mapped[str] = mapped_column(String(24), nullable=False)
+    transaction_type: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="CHARGE", server_default="CHARGE"
+    )
     mode: Mapped[str] = mapped_column(String(24), nullable=False, default="gateway")
     merchant_invoice_no: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     gateway_payment_id: Mapped[str | None] = mapped_column(

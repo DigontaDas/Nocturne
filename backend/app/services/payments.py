@@ -30,7 +30,7 @@ from app.schemas.hospitality import (
     PaymentVerifyRequest,
     PaymentVerifyResponse,
 )
-from app.services.reservations import serialize_reservation
+from app.services.reservation_serializer import serialize_reservation
 
 # Cached bKash id_token state (mirroring Clarity's server/services/bkash.js token cache)
 _bkash_token_lock = asyncio.Lock()
@@ -330,6 +330,7 @@ async def initiate_early_payment(
     tx = PaymentTransaction(
         reservation_id=reservation.id,
         gateway=gateway,
+        transaction_type="CHARGE",
         mode=mode,
         merchant_invoice_no=merchant_invoice_no,
         gateway_payment_id=payment_id,
@@ -472,3 +473,129 @@ async def verify_early_payment(
         message="Early settlement confirmed. Priority seating unlocked.",
         reservation=serialize_reservation(reservation),
     )
+
+
+async def _refund_bkash_payment(
+    payment_id: str,
+    trx_id: str,
+    amount_bdt: Decimal,
+    sku: str,
+    reason: str,
+) -> dict[str, Any]:
+    return await _bkash_call(
+        "/payment/refund",
+        {
+            "paymentID": payment_id,
+            "trxID": trx_id,
+            "amount": f"{amount_bdt:.2f}".rstrip("0").rstrip("."),
+            "sku": sku,
+            "reason": reason[:200],
+        },
+    )
+
+
+async def _refund_stripe_payment(
+    payment_intent_id: str,
+    amount_bdt: Decimal,
+    reason: str,
+) -> dict[str, Any]:
+    amount_minor = max(50, int((amount_bdt * 100).quantize(Decimal("1"))))
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        resp = await client.post(
+            "https://api.stripe.com/v1/refunds",
+            headers={"Authorization": f"Bearer {settings.STRIPE_SECRET_KEY.strip()}"},
+            data={
+                "payment_intent": payment_intent_id,
+                "amount": str(amount_minor),
+                "metadata[reason]": reason[:200],
+            },
+        )
+    data = resp.json()
+    if resp.status_code >= 400:
+        err_msg = (data.get("error") or {}).get("message") or "Stripe refund request failed."
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=err_msg)
+    return data
+
+
+async def refund_early_payment(
+    db: AsyncSession,
+    reservation: Reservation,
+    refund_amount_bdt: Decimal,
+    reason: str,
+) -> tuple[str | None, dict[str, Any]]:
+    """Issue a full or partial refund through bKash, Stripe, or local demo ledger."""
+    if refund_amount_bdt <= Decimal("0.00"):
+        return None, {}
+
+    charge_stmt = (
+        select(PaymentTransaction)
+        .where(
+            PaymentTransaction.reservation_id == reservation.id,
+            PaymentTransaction.transaction_type == "CHARGE",
+            PaymentTransaction.status == "COMPLETED",
+        )
+        .order_by(PaymentTransaction.id.desc())
+    )
+    charge_tx = (await db.execute(charge_stmt)).scalar_one_or_none()
+
+    gateway = charge_tx.gateway if charge_tx else (
+        "bkash" if (reservation.payment_method or "").upper() == "BKASH" else "card"
+    )
+    mode = charge_tx.mode if charge_tx else (
+        "demo_simulation" if settings.PAYMENT_ALLOW_DEMO_SIMULATION else "gateway"
+    )
+    refund_invoice = f"{reservation.reference_code}-REF-{uuid.uuid4().hex[:6].upper()}"
+    refund_ref: str
+    raw_payload: dict[str, Any] = {}
+
+    if mode == "gateway" and gateway == "bkash" and bkash_is_configured():
+        pay_id = str(charge_tx.gateway_payment_id or reservation.payment_id or "")
+        trx_id = str(charge_tx.gateway_trx_id or reservation.payment_reference or "")
+        raw_payload = await _refund_bkash_payment(
+            payment_id=pay_id,
+            trx_id=trx_id,
+            amount_bdt=refund_amount_bdt,
+            sku=reservation.reference_code,
+            reason=reason,
+        )
+        refund_ref = str(raw_payload.get("refundTrxID") or raw_payload.get("trxID") or refund_invoice)
+    elif mode == "gateway" and gateway == "card" and stripe_is_configured():
+        pi_id = ""
+        if charge_tx and isinstance(charge_tx.raw_payload, dict):
+            pi_id = str(charge_tx.raw_payload.get("payment_intent") or "")
+        pi_id = pi_id or str(
+            (charge_tx.gateway_trx_id if charge_tx else None)
+            or reservation.payment_reference
+            or ""
+        )
+        raw_payload = await _refund_stripe_payment(
+            payment_intent_id=pi_id,
+            amount_bdt=refund_amount_bdt,
+            reason=reason,
+        )
+        refund_ref = str(raw_payload.get("id") or refund_invoice)
+    else:
+        prefix = "BKX-REF" if gateway == "bkash" else "CRD-REF"
+        refund_ref = f"{prefix}-{uuid.uuid4().hex[:8].upper()}"
+        raw_payload = {
+            "mode": mode,
+            "gateway": gateway,
+            "refund_amount_bdt": str(refund_amount_bdt),
+            "reason": reason,
+        }
+
+    refund_tx = PaymentTransaction(
+        reservation_id=reservation.id,
+        gateway=gateway,
+        transaction_type="REFUND",
+        mode=mode,
+        merchant_invoice_no=refund_invoice,
+        gateway_payment_id=reservation.payment_id,
+        gateway_trx_id=refund_ref,
+        amount_bdt=refund_amount_bdt,
+        currency="BDT",
+        status="COMPLETED",
+        raw_payload=raw_payload,
+    )
+    db.add(refund_tx)
+    return refund_ref, raw_payload

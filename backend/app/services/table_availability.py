@@ -38,7 +38,7 @@ async def fetch_tables_with_status(
             select(Reservation.table_id).where(
                 Reservation.reservation_date == reservation_date,
                 Reservation.time_slot == time_slot.strip(),
-                Reservation.status != "CANCELLED",
+                Reservation.status.notin_(("CANCELLED", "NO_SHOW")),
             )
         )
     ).scalars().all()
