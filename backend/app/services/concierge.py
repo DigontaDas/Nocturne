@@ -428,13 +428,6 @@ async def detect_concierge_llm_status() -> dict[str, Any]:
                     }
         except Exception:
             pass
-    if settings.OPENAI_API_KEY.strip():
-        return {
-            "mode": "openai",
-            "provider": "OpenAI",
-            "model": "gpt-4o-mini",
-            "live_llm": True,
-        }
     return {
         "mode": "hybrid-sql-pgvector",
         "provider": "Grounded SQL + pgvector Synthesizer",
@@ -444,7 +437,7 @@ async def detect_concierge_llm_status() -> dict[str, Any]:
 
 
 async def _resolve_llama_client() -> tuple[Any, str, str] | None:
-    """Resolve primary Llama client (Groq -> Custom Llama -> Local Ollama -> OpenAI)."""
+    """Resolve primary Llama client (Groq -> Custom Free Llama -> Local Ollama)."""
     if settings.GROQ_API_KEY.strip():
         try:
             from langchain_groq import ChatGroq
@@ -494,20 +487,6 @@ async def _resolve_llama_client() -> tuple[Any, str, str] | None:
                     timeout=settings.OLLAMA_TIMEOUT_SECONDS * 15,
                 )
                 return llm, "llama-ollama", model_name
-        except Exception:
-            pass
-
-    if settings.OPENAI_API_KEY.strip():
-        try:
-            from langchain_openai import ChatOpenAI
-
-            llm = ChatOpenAI(
-                api_key=settings.OPENAI_API_KEY.strip(),
-                model="gpt-4o-mini",
-                temperature=0.2,
-                max_tokens=520,
-            )
-            return llm, "openai", "gpt-4o-mini"
         except Exception:
             pass
 
@@ -662,7 +641,7 @@ async def stream_concierge_response(
         },
     )
 
-    # 4. Stream live Llama response (Groq / Custom Llama / Local Ollama / OpenAI) or fall back to deterministic synthesizer
+    # 4. Stream live Llama response (Groq / Free Custom Llama / Local Ollama) or fall back to deterministic synthesizer
     provider = "hybrid-sql-pgvector"
     model_name = "deterministic"
     streamed_from_llm = False

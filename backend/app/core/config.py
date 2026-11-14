@@ -36,8 +36,7 @@ class Settings(BaseSettings):
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
     LLAMA_API_KEY: str = ""
     LLAMA_BASE_URL: str = ""
-    LLAMA_MODEL: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
-    OPENAI_API_KEY: str = ""
+    LLAMA_MODEL: str = "meta-llama/llama-3.3-70b-instruct:free"
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3.2"
     OLLAMA_TIMEOUT_SECONDS: float = 2.0
