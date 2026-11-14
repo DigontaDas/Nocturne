@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: nocturne-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nocturne}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nocturne_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-nocturne}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - nocturne_pgdata:/var/lib/postgresql/data
+      - ./backend/docker/init-pgvector.sql:/docker-entrypoint-initdb.d/01-init-pgvector.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nocturne} -d ${POSTGRES_DB:-nocturne}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: nocturne-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - nocturne_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  nocturne_pgdata:
+  nocturne_redisdata:
