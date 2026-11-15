@@ -10,6 +10,7 @@ export function SignatureDishesSection() {
     queryKey: ["menu-items"],
     queryFn: () => fetchMenuItems(),
     initialData: FALLBACK_MENU_ITEMS,
+    initialDataUpdatedAt: 0,
     staleTime: 60_000,
   });
 

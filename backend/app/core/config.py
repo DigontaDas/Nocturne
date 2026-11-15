@@ -111,6 +111,12 @@ class Settings(BaseSettings):
 
     PAYMENT_ALLOW_DEMO_SIMULATION: bool = True
 
+    # Boss Admin Credentials & Token Signing
+    ADMIN_USERNAME: str = "boss"
+    ADMIN_PASSWORD: str = "NocturneBoss2026"
+    ADMIN_SECRET_KEY: str = "nocturne-admin-signing-key-change-in-production"
+    ADMIN_TOKEN_TTL_SECONDS: int = 43200
+
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def validate_database_url(cls, v: object) -> str:
@@ -134,6 +140,9 @@ class Settings(BaseSettings):
         "BKASH_APP_SECRET",
         "BKASH_USERNAME",
         "BKASH_PASSWORD",
+        "ADMIN_USERNAME",
+        "ADMIN_PASSWORD",
+        "ADMIN_SECRET_KEY",
         mode="before",
     )
     @classmethod

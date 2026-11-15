@@ -119,6 +119,7 @@ class MenuItemOut(BaseModel):
 
 class ReservationItemIn(BaseModel):
     menu_item_id: int
+    menu_item_slug: str | None = Field(default=None, max_length=120)
     quantity: int = Field(ge=1, le=20)
     selected_modifiers: dict[str, Any] = Field(default_factory=dict)
 

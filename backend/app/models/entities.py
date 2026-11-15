@@ -71,7 +71,7 @@ class RestaurantTable(Base):
     is_window_side: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_quiet_zone: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     noise_db: Mapped[int] = mapped_column(Integer, nullable=False, default=52)
-    perspective_photo_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    perspective_photo_url: Mapped[str] = mapped_column(Text, nullable=False)
     vibe_notes: Mapped[str] = mapped_column(Text, nullable=False)
 
     zone: Mapped[DiningZone] = relationship(back_populates="tables")
@@ -99,7 +99,7 @@ class MenuItem(Base):
     customization_schema: Mapped[dict[str, Any]] = mapped_column(
         JSONVariant, nullable=False, default=dict
     )
-    image_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    image_url: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class Reservation(Base):

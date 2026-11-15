@@ -22,6 +22,7 @@ from app.models.entities import (
 from app.schemas.hospitality import (
     ReservationCancelRequest,
     ReservationConfirmRequest,
+    ReservationItemIn,
     ReservationLifecycleResponse,
     ReservationNoShowRequest,
     ReservationOut,
@@ -159,18 +160,40 @@ async def confirm_reservation(
             )
 
         menu_ids = [item.menu_item_id for item in payload.items]
-        menu_map: dict[int, MenuItem] = {}
-        if menu_ids:
-            menu_rows = (
-                await db.execute(select(MenuItem).where(MenuItem.id.in_(menu_ids)))
-            ).scalars().all()
-            menu_map = {m.id: m for m in menu_rows}
-            missing = [mid for mid in menu_ids if mid not in menu_map]
-            if missing:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Menu item(s) not found: {missing}",
-                )
+        menu_slugs = [
+            item.menu_item_slug.strip()
+            for item in payload.items
+            if item.menu_item_slug and item.menu_item_slug.strip()
+        ]
+        menu_by_id: dict[int, MenuItem] = {}
+        menu_by_slug: dict[str, MenuItem] = {}
+        if payload.items:
+            if menu_ids:
+                menu_rows = (
+                    await db.execute(select(MenuItem).where(MenuItem.id.in_(menu_ids)))
+                ).scalars().all()
+                menu_by_id = {m.id: m for m in menu_rows}
+            if menu_slugs:
+                slug_rows = (
+                    await db.execute(select(MenuItem).where(MenuItem.slug.in_(menu_slugs)))
+                ).scalars().all()
+                menu_by_slug = {m.slug: m for m in slug_rows}
+
+        resolved_items: list[tuple[ReservationItemIn, MenuItem]] = []
+        missing_refs: list[str] = []
+        for item_in in payload.items:
+            dish = menu_by_id.get(item_in.menu_item_id)
+            if dish is None and item_in.menu_item_slug:
+                dish = menu_by_slug.get(item_in.menu_item_slug.strip())
+            if dish is None:
+                missing_refs.append(item_in.menu_item_slug or str(item_in.menu_item_id))
+            else:
+                resolved_items.append((item_in, dish))
+        if missing_refs:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Menu item(s) not found: {missing_refs}",
+            )
 
         # Generate collision-safe reference code
         ref_code = _generate_reference_code(payload.reservation_date.year)
@@ -186,8 +209,7 @@ async def confirm_reservation(
 
         total_bdt = Decimal("0.00")
         reservation_items: list[ReservationItem] = []
-        for item_in in payload.items:
-            dish = menu_map[item_in.menu_item_id]
+        for item_in, dish in resolved_items:
             delta = _compute_modifier_delta(dish, item_in.selected_modifiers)
             unit_price = max(Decimal("0.00"), Decimal(dish.base_price_bdt) + delta)
             total_bdt += unit_price * item_in.quantity
@@ -229,6 +251,12 @@ async def confirm_reservation(
     except HTTPException:
         await db.rollback()
         raise
+    except Exception as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unable to save reservation ({exc.__class__.__name__}). Please try again.",
+        ) from exc
 
     await clear_table_hold_after_confirm(
         redis=redis,

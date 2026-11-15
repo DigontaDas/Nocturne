@@ -173,6 +173,7 @@ export function MenuCustomizerSection({
         payment_method: paymentMethod,
         items: trayItems.map((item) => ({
           menu_item_id: item.menuItem.id,
+          menu_item_slug: item.menuItem.slug,
           quantity: item.quantity,
           selected_modifiers: item.selectedModifiers,
         })),
@@ -198,14 +199,21 @@ export function MenuCustomizerSection({
 
       router.push(`/booking/${ticket.reference_code}`);
     } catch (err) {
-      const rawMsg = err instanceof Error ? err.message : "";
-      const isValidationOrConflict =
-        /(?:already|hold|409|400|422|expired|invalid|phone|name)/i.test(rawMsg);
-      setConfirmError(
-        isValidationOrConflict
-          ? rawMsg
-          : "Unable to finalize your reservation right now. Please try again in a moment."
+      const rawMsg = err instanceof Error ? err.message.trim() : "";
+      const isNetworkErr = /^(?:failed to fetch|load failed|networkerror|fetch failed)/i.test(
+        rawMsg
       );
+      if (isNetworkErr) {
+        setConfirmError(
+          "Cannot reach the Nocturne booking server right now. The backend may be waking up—please wait 10 seconds and click Confirm again."
+        );
+      } else if (rawMsg) {
+        setConfirmError(rawMsg);
+      } else {
+        setConfirmError(
+          "Unable to finalize your reservation right now. Please try again in a moment."
+        );
+      }
     } finally {
       setSubmitting(false);
     }

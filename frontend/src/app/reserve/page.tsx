@@ -110,6 +110,7 @@ function ReserveStudioContent() {
       }
     },
     initialData: FALLBACK_ZONES,
+    initialDataUpdatedAt: 0,
   });
 
   const {
@@ -130,6 +131,7 @@ function ReserveStudioContent() {
       }
     },
     initialData: FALLBACK_TABLES,
+    initialDataUpdatedAt: 0,
     refetchInterval: 15000,
   });
 
@@ -144,6 +146,7 @@ function ReserveStudioContent() {
       }
     },
     initialData: FALLBACK_MENU_ITEMS,
+    initialDataUpdatedAt: 0,
   });
 
   const selectedTable =

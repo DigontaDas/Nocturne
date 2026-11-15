@@ -54,6 +54,7 @@ export function ZoneAmbianceSection() {
     queryKey: ["zones", selectedDate, selectedSlot],
     queryFn: () => fetchZones(selectedDate, selectedSlot),
     initialData: FALLBACK_ZONES,
+    initialDataUpdatedAt: 0,
     staleTime: 25_000,
   });
 

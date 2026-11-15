@@ -1,5 +1,6 @@
 import asyncio
-from contextlib import asynccontextmanager
+import os
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,17 +12,32 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.db.redis import create_redis_client, get_redis
 from app.db.session import engine, get_db, init_extensions
+from app.services.bootstrap import BOOTSTRAP_STATUS, bootstrap_database
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.redis = create_redis_client()
-    try:
-        await asyncio.wait_for(init_extensions(), timeout=2.5)
-    except Exception:
-        # Allow app startup even if DB is temporarily unreachable until healthcheck
-        pass
+    app.state.bootstrap_task = None
+
+    skip_bootstrap = bool(
+        os.getenv("PYTEST_CURRENT_TEST") or os.getenv("NOCTURNE_SKIP_BOOTSTRAP") == "1"
+    )
+    if skip_bootstrap:
+        try:
+            await asyncio.wait_for(init_extensions(), timeout=2.5)
+        except Exception:
+            pass
+    else:
+        app.state.bootstrap_task = asyncio.create_task(bootstrap_database(dispose_engine=False))
+
     yield
+
+    task = getattr(app.state, "bootstrap_task", None)
+    if task is not None and not task.done():
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
     await app.state.redis.aclose()
     await engine.dispose()
 
@@ -51,7 +67,12 @@ app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 @app.get("/")
 async def root() -> dict[str, str]:
-    return {"service": settings.APP_NAME, "docs": "/docs", "health": "/api/v1/health"}
+    return {
+        "service": settings.APP_NAME,
+        "docs": "/docs",
+        "health": "/api/v1/health",
+        "bootstrap": str(BOOTSTRAP_STATUS.get("state", "idle")),
+    }
 
 
 @app.get("/health")

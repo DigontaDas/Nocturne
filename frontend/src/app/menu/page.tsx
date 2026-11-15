@@ -24,6 +24,7 @@ function MenuPageContent() {
       }
     },
     initialData: FALLBACK_MENU_ITEMS,
+    initialDataUpdatedAt: 0,
   });
 
   return (
@@ -32,7 +33,7 @@ function MenuPageContent() {
       <div className="mb-6 flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-brass/20 pb-8">
         <div>
           <span className="font-mono text-[11px] uppercase tracking-[0.28em] text-brass">
-            Seasonal Tasting Menu &bull; 12 Wood-Fired Plates
+            Seasonal Tasting Menu &bull; {menuItems.length} Wood-Fired Plates
           </span>
           <h1 className="mt-3 font-display text-4xl sm:text-5xl lg:text-6xl uppercase tracking-[0.06em] text-cream leading-[1.02]">
             The Nocturne{" "}

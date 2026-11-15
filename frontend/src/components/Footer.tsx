@@ -58,6 +58,12 @@ export function Footer() {
           >
             <span>Sample Reservation Pass</span>
           </Link>
+          <Link
+            href="/admin"
+            className="inline-flex items-center font-sans text-[11px] uppercase tracking-[0.16em] text-sand/75 hover:text-brass transition-colors"
+          >
+            <span>Boss Admin</span>
+          </Link>
         </div>
       </div>
     </footer>

@@ -79,9 +79,10 @@ function RoundTable2({
   highlighted: boolean;
   onClick: () => void;
 }) {
+  const rotation = table.svg_rotation || 0;
   return (
     <g
-      transform={`translate(${table.svg_x}, ${table.svg_y})`}
+      transform={`translate(${table.svg_x}, ${table.svg_y})${rotation ? ` rotate(${rotation})` : ""}`}
       onClick={onClick}
       style={{ cursor: colors.cursor, opacity: dimmed ? 0.28 : 1 }}
       className="transition-opacity duration-300"
@@ -109,25 +110,27 @@ function RoundTable2({
         strokeWidth={2}
       />
       <circle r={4} cx={-15} cy={-15} fill={colors.dot} />
-      <text
-        y={-2}
-        textAnchor="middle"
-        fill={colors.text}
-        fontSize="12"
-        fontFamily="var(--font-sans), system-ui, sans-serif"
-        fontWeight="600"
-      >
-        {table.table_code}
-      </text>
-      <text
-        y={12}
-        textAnchor="middle"
-        fill="#A39B8F"
-        fontSize="9"
-        fontFamily="var(--font-sans), system-ui, sans-serif"
-      >
-        {table.noise_db} dB
-      </text>
+      <g transform={rotation ? `rotate(${-rotation})` : undefined}>
+        <text
+          y={-2}
+          textAnchor="middle"
+          fill={colors.text}
+          fontSize="12"
+          fontFamily="var(--font-sans), system-ui, sans-serif"
+          fontWeight="600"
+        >
+          {table.table_code}
+        </text>
+        <text
+          y={12}
+          textAnchor="middle"
+          fill="#A39B8F"
+          fontSize="9"
+          fontFamily="var(--font-sans), system-ui, sans-serif"
+        >
+          {table.noise_db} dB
+        </text>
+      </g>
     </g>
   );
 }
@@ -145,9 +148,10 @@ function RectTable4({
   highlighted: boolean;
   onClick: () => void;
 }) {
+  const rotation = table.svg_rotation || 0;
   return (
     <g
-      transform={`translate(${table.svg_x}, ${table.svg_y})`}
+      transform={`translate(${table.svg_x}, ${table.svg_y})${rotation ? ` rotate(${rotation})` : ""}`}
       onClick={onClick}
       style={{ cursor: colors.cursor, opacity: dimmed ? 0.28 : 1 }}
       className="transition-opacity duration-300"
@@ -185,25 +189,27 @@ function RectTable4({
         strokeWidth={2}
       />
       <circle r={4} cx={-24} cy={-12} fill={colors.dot} />
-      <text
-        y={-1}
-        textAnchor="middle"
-        fill={colors.text}
-        fontSize="12"
-        fontFamily="var(--font-sans), system-ui, sans-serif"
-        fontWeight="600"
-      >
-        {table.table_code}
-      </text>
-      <text
-        y={13}
-        textAnchor="middle"
-        fill="#A39B8F"
-        fontSize="9"
-        fontFamily="var(--font-sans), system-ui, sans-serif"
-      >
-        4P • {table.noise_db}dB
-      </text>
+      <g transform={rotation ? `rotate(${-rotation})` : undefined}>
+        <text
+          y={-1}
+          textAnchor="middle"
+          fill={colors.text}
+          fontSize="12"
+          fontFamily="var(--font-sans), system-ui, sans-serif"
+          fontWeight="600"
+        >
+          {table.table_code}
+        </text>
+        <text
+          y={13}
+          textAnchor="middle"
+          fill="#A39B8F"
+          fontSize="9"
+          fontFamily="var(--font-sans), system-ui, sans-serif"
+        >
+          4P • {table.noise_db}dB
+        </text>
+      </g>
     </g>
   );
 }
@@ -221,9 +227,10 @@ function CurvedBooth6({
   highlighted: boolean;
   onClick: () => void;
 }) {
+  const rotation = table.svg_rotation || 0;
   return (
     <g
-      transform={`translate(${table.svg_x}, ${table.svg_y})`}
+      transform={`translate(${table.svg_x}, ${table.svg_y})${rotation ? ` rotate(${rotation})` : ""}`}
       onClick={onClick}
       style={{ cursor: colors.cursor, opacity: dimmed ? 0.28 : 1 }}
       className="transition-opacity duration-300"
@@ -264,25 +271,27 @@ function CurvedBooth6({
         strokeWidth={2}
       />
       <circle r={4} cx={-33} cy={-9} fill={colors.dot} />
-      <text
-        y={-1}
-        textAnchor="middle"
-        fill={colors.text}
-        fontSize="12"
-        fontFamily="var(--font-sans), system-ui, sans-serif"
-        fontWeight="600"
-      >
-        {table.table_code}
-      </text>
-      <text
-        y={12}
-        textAnchor="middle"
-        fill="#A39B8F"
-        fontSize="9"
-        fontFamily="var(--font-sans), system-ui, sans-serif"
-      >
-        VIP {table.capacity_max}P • {table.noise_db}dB
-      </text>
+      <g transform={rotation ? `rotate(${-rotation})` : undefined}>
+        <text
+          y={-1}
+          textAnchor="middle"
+          fill={colors.text}
+          fontSize="12"
+          fontFamily="var(--font-sans), system-ui, sans-serif"
+          fontWeight="600"
+        >
+          {table.table_code}
+        </text>
+        <text
+          y={12}
+          textAnchor="middle"
+          fill="#A39B8F"
+          fontSize="9"
+          fontFamily="var(--font-sans), system-ui, sans-serif"
+        >
+          VIP {table.capacity_max}P • {table.noise_db}dB
+        </text>
+      </g>
     </g>
   );
 }

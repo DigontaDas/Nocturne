@@ -176,22 +176,23 @@ export async function confirmReservation(payload: {
   payment_method?: PaymentMethod;
   items: {
     menu_item_id: number;
+    menu_item_slug?: string;
     quantity: number;
     selected_modifiers: Record<string, unknown>;
   }[];
 }): Promise<ReservationOut> {
+  if (isLoopbackApiOnRemoteHost()) {
+    throw new Error(
+      "API endpoint is set to localhost in Vercel. Please configure NEXT_PUBLIC_API_URL."
+    );
+  }
   const res = await fetch(`${API_BASE_URL}/api/v1/reservations/confirm`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    const msg =
-      typeof err?.detail === "string"
-        ? err.detail
-        : err?.detail?.message || `Reservation failed (${res.status})`;
-    throw new Error(msg);
+    throw new Error(await readApiErrorMessage(res, "Reservation failed"));
   }
   return res.json();
 }
@@ -256,9 +257,19 @@ export async function fetchConciergeStatus(): Promise<ConciergeLlmStatus> {
 }
 
 async function readApiErrorMessage(res: Response, fallback: string): Promise<string> {
+  if (res.status === 502 || res.status === 503 || res.status === 504) {
+    return `Nocturne backend is restarting or waking up (${res.status}). Please retry in a few seconds.`;
+  }
   const err = await res.json().catch(() => ({}));
   if (typeof err?.detail === "string") return err.detail;
   if (typeof err?.detail?.message === "string") return err.detail.message;
+  if (Array.isArray(err?.detail)) {
+    const joined = err.detail
+      .map((entry: { msg?: unknown }) => (typeof entry?.msg === "string" ? entry.msg : ""))
+      .filter(Boolean)
+      .join("; ");
+    if (joined) return joined;
+  }
   return `${fallback} (${res.status})`;
 }
 
@@ -438,4 +449,178 @@ export async function streamConcierge(
   if (tokenCount === 0) {
     throw new Error("Concierge stream returned an empty response.");
   }
+}
+
+export interface AdminLoginResponse {
+  access_token: string;
+  token_type: string;
+  username: string;
+  expires_at: string;
+}
+
+export interface AdminSessionOut {
+  username: string;
+  authenticated: boolean;
+}
+
+export interface AdminMenuPayload {
+  name: string;
+  slug?: string;
+  category: string;
+  description: string;
+  base_price_bdt: number;
+  calories_kcal: number;
+  protein_grams: number;
+  prep_time_mins: number;
+  spice_level: number;
+  is_dairy_free: boolean;
+  is_nut_free: boolean;
+  is_gluten_free: boolean;
+  is_signature: boolean;
+  allergen_flags: string[];
+  image_url: string;
+}
+
+export interface AdminTablePayload {
+  table_code: string;
+  zone_slug: string;
+  capacity_min: number;
+  capacity_max: number;
+  shape: "ROUND_2" | "RECT_4" | "BOOTH_6";
+  svg_x: number;
+  svg_y: number;
+  svg_rotation: number;
+  is_window_side: boolean;
+  is_quiet_zone: boolean;
+  noise_db: number;
+  perspective_photo_url: string;
+  vibe_notes: string;
+}
+
+export interface AdminTableLayoutItem {
+  id: number;
+  zone_slug?: string;
+  svg_x: number;
+  svg_y: number;
+  svg_rotation: number;
+}
+
+function adminHeaders(token: string): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+}
+
+export async function adminLogin(payload: {
+  username: string;
+  password: string;
+}): Promise<AdminLoginResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/admin/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await readApiErrorMessage(res, "Admin sign-in failed"));
+  return res.json();
+}
+
+export async function adminVerifySession(token: string): Promise<AdminSessionOut> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/admin/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(await readApiErrorMessage(res, "Admin session expired"));
+  return res.json();
+}
+
+export async function adminCreateMenuItem(
+  token: string,
+  payload: AdminMenuPayload
+): Promise<MenuItem> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/admin/menu`, {
+    method: "POST",
+    headers: adminHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await readApiErrorMessage(res, "Unable to create dish"));
+  return res.json();
+}
+
+export async function adminUpdateMenuItem(
+  token: string,
+  itemId: number,
+  payload: Partial<AdminMenuPayload>
+): Promise<MenuItem> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/admin/menu/${itemId}`, {
+    method: "PUT",
+    headers: adminHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await readApiErrorMessage(res, "Unable to update dish"));
+  return res.json();
+}
+
+export async function adminDeleteMenuItem(
+  token: string,
+  itemId: number
+): Promise<{ deleted: boolean; id: number }> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/admin/menu/${itemId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(await readApiErrorMessage(res, "Unable to delete dish"));
+  return res.json();
+}
+
+export async function adminCreateTable(
+  token: string,
+  payload: AdminTablePayload
+): Promise<RestaurantTable> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/admin/tables`, {
+    method: "POST",
+    headers: adminHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await readApiErrorMessage(res, "Unable to create table"));
+  return res.json();
+}
+
+export async function adminUpdateTable(
+  token: string,
+  tableId: number,
+  payload: Partial<AdminTablePayload>
+): Promise<RestaurantTable> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/admin/tables/${tableId}`, {
+    method: "PUT",
+    headers: adminHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await readApiErrorMessage(res, "Unable to update table"));
+  return res.json();
+}
+
+export async function adminSaveTableLayout(
+  token: string,
+  tables: AdminTableLayoutItem[]
+): Promise<RestaurantTable[]> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/admin/tables/layout`, {
+    method: "POST",
+    headers: adminHeaders(token),
+    body: JSON.stringify({ tables }),
+  });
+  if (!res.ok) throw new Error(await readApiErrorMessage(res, "Unable to save table layout"));
+  return res.json();
+}
+
+export async function adminDeleteTable(
+  token: string,
+  tableId: number
+): Promise<{ deleted: boolean; id: number }> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/admin/tables/${tableId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(await readApiErrorMessage(res, "Unable to delete table"));
+  return res.json();
 }
