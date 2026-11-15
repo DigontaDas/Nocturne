@@ -11,25 +11,32 @@ from app.db.session import get_db
 router = APIRouter(tags=["health"])
 
 
+async def _check_postgres(db: AsyncSession) -> str:
+    try:
+        await asyncio.wait_for(db.execute(text("SELECT 1")), timeout=1.5)
+        return "up"
+    except Exception:
+        return "down"
+
+
+async def _check_redis(redis: Redis) -> str:
+    try:
+        pong = await asyncio.wait_for(redis.ping(), timeout=1.5)
+        return "up" if pong else "down"
+    except Exception:
+        return "down"
+
+
 @router.get("/health")
 async def health_check(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ) -> dict[str, str]:
-    """Verify PostgreSQL and Redis liveness with bounded 1.5s probes."""
-    db_status = "down"
-    redis_status = "down"
-    try:
-        await asyncio.wait_for(db.execute(text("SELECT 1")), timeout=1.5)
-        db_status = "up"
-    except Exception:
-        db_status = "down"
-
-    try:
-        pong = await asyncio.wait_for(redis.ping(), timeout=1.5)
-        redis_status = "up" if pong else "down"
-    except Exception:
-        redis_status = "down"
+    """Verify PostgreSQL and Redis liveness concurrently within a bounded 1.5s budget."""
+    db_status, redis_status = await asyncio.gather(
+        _check_postgres(db),
+        _check_redis(redis),
+    )
 
     return {
         "status": "ok" if db_status == "up" and redis_status == "up" else "degraded",

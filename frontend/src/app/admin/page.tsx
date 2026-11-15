@@ -118,7 +118,7 @@ export default function AdminPage() {
 
   if (!token) {
     return (
-      <main className="min-h-screen bg-obsidian text-cream flex flex-col justify-between px-5 py-10">
+      <main className="min-h-screen bg-obsidian text-cream flex flex-col justify-between px-5 pt-24 pb-10">
         <div className="max-w-7xl w-full mx-auto flex items-center justify-between">
           <Link
             href="/"
@@ -215,7 +215,7 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-obsidian text-cream pb-20">
+    <main className="min-h-screen bg-obsidian text-cream pt-20 pb-20">
       {/* Top Executive Console Header */}
       <header className="border-b border-brass/25 bg-charcoal/90 px-5 sm:px-8 py-4">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
