@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
+  Compass,
+  LayoutGrid,
   Minus,
   Plus,
   Search,
@@ -19,8 +21,16 @@ import {
   initEarlyPayment,
 } from "@/lib/api";
 import { getDishImageClass } from "@/lib/dish-media";
+import {
+  createDefaultTrayItem,
+  evaluateTrayAllergens,
+} from "@/lib/tasting-logic";
 import { useReservationContext } from "@/context/ReservationContext";
 import { PlanetaryDishWheel } from "@/components/PlanetaryDishWheel";
+import {
+  TastingBudgetPlanner,
+  TastingLedgerGrid,
+} from "@/components/TastingStudioTools";
 import { MenuItem, PaymentConfigOut, PaymentMethod } from "@/types/nocturne";
 
 interface MenuCustomizerSectionProps {
@@ -42,6 +52,7 @@ export function MenuCustomizerSection({
     heldTable,
     setHeldTable,
     trayItems,
+    addTrayItem,
     updateTrayQuantity,
     removeTrayItem,
     clearTray,
@@ -52,6 +63,10 @@ export function MenuCustomizerSection({
   const [dairyFreeOnly, setDairyFreeOnly] = useState<boolean>(false);
   const [nutFreeOnly, setNutFreeOnly] = useState<boolean>(false);
   const [glutenFreeOnly, setGlutenFreeOnly] = useState<boolean>(false);
+  const [viewMode, setViewMode] = useState<"wheel" | "matrix">("wheel");
+  const [focusedDishSlug, setFocusedDishSlug] = useState<string | undefined>(
+    initialDishSlug
+  );
 
   const [guestName, setGuestName] = useState<string>("");
   const [guestPhone, setGuestPhone] = useState<string>("+8801711000000");
@@ -109,6 +124,19 @@ export function MenuCustomizerSection({
     traySubtotalBdt > 0
       ? traySubtotalBdt
       : (paymentConfig?.table_deposit_bdt ?? 1000);
+  const trayAudit = evaluateTrayAllergens(trayItems);
+  const suggestedMocktail = useMemo(
+    () =>
+      menuItems.find((m) => m.slug === "smoked-hibiscus-mocktail") ||
+      menuItems.find((m) => m.category === "Botanical Mocktails") ||
+      null,
+    [menuItems]
+  );
+
+  const handleInspectOnWheel = (slug: string) => {
+    setFocusedDishSlug(slug);
+    setViewMode("wheel");
+  };
 
   const handleConfirmBooking = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,10 +214,12 @@ export function MenuCustomizerSection({
   return (
     <section
       id="menu"
+      data-scroll-section
+      data-scroll-label={standalone ? "Tasting Studio" : "Tasting Menu"}
       className="relative pt-14 pb-16 border-t border-brass/20 overflow-x-clip"
     >
-      {/* Dietary Safety & Search Control Strip */}
-      <div className="mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-4 border border-brass/25 bg-charcoal/55 p-4">
+      {/* Dietary Safety, Search & View Switcher Strip */}
+      <div className="mb-8 flex flex-col xl:flex-row xl:items-center justify-between gap-4 border border-brass/25 bg-charcoal/55 p-4">
         <div className="relative flex-1 max-w-md">
           <Search className="w-3.5 h-3.5 text-brass absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -201,60 +231,110 @@ export function MenuCustomizerSection({
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-sand/75 mr-1">
-            Allergen Matrix:
-          </span>
-          {[
-            {
-              label: "Dairy-Free",
-              active: dairyFreeOnly,
-              toggle: () => setDairyFreeOnly((v) => !v),
-            },
-            {
-              label: "Nut-Free",
-              active: nutFreeOnly,
-              toggle: () => setNutFreeOnly((v) => !v),
-            },
-            {
-              label: "Gluten-Free",
-              active: glutenFreeOnly,
-              toggle: () => setGlutenFreeOnly((v) => !v),
-            },
-          ].map((filter) => (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-sand/75 mr-1">
+              Allergen Matrix:
+            </span>
+            {[
+              {
+                label: "Dairy-Free",
+                active: dairyFreeOnly,
+                toggle: () => setDairyFreeOnly((v) => !v),
+              },
+              {
+                label: "Nut-Free",
+                active: nutFreeOnly,
+                toggle: () => setNutFreeOnly((v) => !v),
+              },
+              {
+                label: "Gluten-Free",
+                active: glutenFreeOnly,
+                toggle: () => setGlutenFreeOnly((v) => !v),
+              },
+            ].map((filter) => (
+              <button
+                key={filter.label}
+                type="button"
+                onClick={filter.toggle}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 border font-syne text-[10px] uppercase tracking-[0.18em] transition-colors ${
+                  filter.active
+                    ? "bg-sage/20 border-sage text-cream"
+                    : "bg-obsidian border-brass/25 text-sand hover:border-brass hover:text-cream"
+                }`}
+              >
+                <ShieldCheck className="w-3 h-3 text-sage" />
+                <span>{filter.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <div
+            role="group"
+            aria-label="Menu view mode"
+            className="inline-flex border border-brass/30 bg-obsidian p-0.5"
+          >
             <button
-              key={filter.label}
               type="button"
-              onClick={filter.toggle}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 border font-syne text-[10px] uppercase tracking-[0.18em] transition-colors ${
-                filter.active
-                  ? "bg-sage/20 border-sage text-cream"
-                  : "bg-obsidian border-brass/25 text-sand hover:border-brass hover:text-cream"
+              onClick={() => setViewMode("wheel")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 font-sans text-[10px] uppercase tracking-[0.16em] transition-colors ${
+                viewMode === "wheel"
+                  ? "bg-brass text-obsidian font-semibold"
+                  : "text-sand hover:text-cream"
               }`}
             >
-              <ShieldCheck className="w-3 h-3 text-sage" />
-              <span>{filter.label}</span>
+              <Compass className="w-3 h-3" />
+              <span>Wheel</span>
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => setViewMode("matrix")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 font-sans text-[10px] uppercase tracking-[0.16em] transition-colors ${
+                viewMode === "matrix"
+                  ? "bg-brass text-obsidian font-semibold"
+                  : "text-sand hover:text-cream"
+              }`}
+            >
+              <LayoutGrid className="w-3 h-3" />
+              <span>Course Matrix</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Full-Width Centered Bottom-Arch Tasting Wheel */}
+      {/* Interactive Algorithmic Budget & Dietary Flight Planner */}
+      <TastingBudgetPlanner
+        menuItems={menuItems}
+        dairyFreeOnly={dairyFreeOnly}
+        nutFreeOnly={nutFreeOnly}
+        glutenFreeOnly={glutenFreeOnly}
+        onInspectDish={handleInspectOnWheel}
+      />
+
+      {/* Full-Width Tasting Wheel OR Architectural Course Ledger */}
       <div className="space-y-8">
         <div className="border border-brass/20 bg-obsidian">
           {filteredMenu.length > 0 ? (
-            <PlanetaryDishWheel
-              dishes={filteredMenu}
-              mode="interactive"
-              initialDishSlug={initialDishSlug}
-              sectionLabel={
-                standalone
-                  ? "Seasonal Tasting Menu"
-                  : "Pre-Order Tasting Menu"
-              }
-              titlePrefix="Compose"
-              titleItalic="Sequence"
-            />
+            viewMode === "wheel" ? (
+              <PlanetaryDishWheel
+                dishes={filteredMenu}
+                fullCatalog={menuItems}
+                mode="interactive"
+                initialDishSlug={focusedDishSlug}
+                sectionLabel={
+                  standalone
+                    ? "Seasonal Tasting Menu"
+                    : "Pre-Order Tasting Menu"
+                }
+                titlePrefix="Compose"
+                titleItalic="Sequence"
+              />
+            ) : (
+              <TastingLedgerGrid
+                dishes={filteredMenu}
+                onInspectOnWheel={handleInspectOnWheel}
+              />
+            )
           ) : (
             <div className="py-24 px-8 text-center space-y-4">
               <p className="font-serif italic text-2xl text-cream">
@@ -277,7 +357,12 @@ export function MenuCustomizerSection({
         </div>
 
         {/* Architectural Pre-Order Tray & Pass Issuance */}
-        <aside className="border border-brass/30 bg-charcoal/90 backdrop-blur-md p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <aside
+          id="tray-checkout"
+          data-scroll-section
+          data-scroll-label="Reservation Tray"
+          className="border border-brass/30 bg-charcoal/90 backdrop-blur-md p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
+        >
           <div className="lg:col-span-6 space-y-5">
             <div className="flex items-center justify-between border-b border-brass/20 pb-4">
               <h3 className="font-display text-lg uppercase tracking-[0.14em] text-cream">
@@ -376,8 +461,57 @@ export function MenuCustomizerSection({
               </div>
             )}
 
-            {/* Totals & Macros */}
-            <div className="border-t border-brass/20 pt-4 space-y-2">
+            {/* Totals, Course Progression Audit & Macros */}
+            <div className="border-t border-brass/20 pt-4 space-y-3">
+              {trayItems.length > 0 && (
+                <div className="bg-obsidian/80 border border-brass/20 p-3 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono uppercase tracking-wider">
+                    <span className="text-brass">Kitchen Pass Readiness</span>
+                    <span className="text-sand/85 tabular-nums">
+                      ~{trayAudit.peakPrepMins}m synchronized fire
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5 font-mono text-[9.5px] uppercase">
+                    <span
+                      className={`px-2 py-0.5 border ${
+                        trayAudit.allDairyFree
+                          ? "border-sage/50 bg-sage/15 text-sage"
+                          : "border-brass/20 text-sand/70"
+                      }`}
+                    >
+                      {trayAudit.allDairyFree ? "Dairy-Free Sequence" : "Includes Dairy"}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 border ${
+                        trayAudit.allNutFree
+                          ? "border-sage/50 bg-sage/15 text-sage"
+                          : "border-brass/20 text-sand/70"
+                      }`}
+                    >
+                      {trayAudit.allNutFree ? "Nut-Free Safe" : "Contains Nuts"}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 border ${
+                        trayAudit.allGlutenFree
+                          ? "border-sage/50 bg-sage/15 text-sage"
+                          : "border-brass/20 text-sand/70"
+                      }`}
+                    >
+                      {trayAudit.allGlutenFree ? "Celiac Safe" : "Contains Gluten"}
+                    </span>
+                  </div>
+                  {!trayAudit.hasMocktail && suggestedMocktail && (
+                    <button
+                      type="button"
+                      onClick={() => addTrayItem(createDefaultTrayItem(suggestedMocktail))}
+                      className="w-full mt-1 py-1.5 px-3 border border-brass/35 hover:border-brass bg-brass/10 hover:bg-brass hover:text-obsidian text-brass font-sans text-[10px] font-semibold uppercase tracking-[0.14em] transition-colors text-center"
+                    >
+                      + Pair {suggestedMocktail.name} ({formatBdt(suggestedMocktail.base_price_bdt)})
+                    </button>
+                  )}
+                </div>
+              )}
+
               <div className="flex items-center justify-between font-sans text-xs text-sand">
                 <span>Tray Nutrition</span>
                 <span className="tabular-nums text-cream">

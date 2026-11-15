@@ -488,7 +488,12 @@ function ReserveStudioContent() {
       )}
 
       {/* Main 65% / 35% Split Canvas + Perspective Drawer */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div
+        id="floorplan"
+        data-scroll-section
+        data-scroll-label="Floorplan"
+        className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"
+      >
         <div className="lg:col-span-8 space-y-4">
           <FloorplanSvg
             tables={tables}

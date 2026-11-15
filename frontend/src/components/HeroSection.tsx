@@ -118,6 +118,9 @@ export function HeroSection() {
 
   return (
     <section
+      id="hero"
+      data-scroll-section
+      data-scroll-label="Entrance"
       ref={sectionRef}
       className="relative bg-obsidian text-cream overflow-x-clip border-b border-brass/15"
     >

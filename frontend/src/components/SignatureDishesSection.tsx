@@ -16,7 +16,10 @@ export function SignatureDishesSection() {
   return (
     <PlanetaryDishWheel
       dishes={dishes}
+      fullCatalog={dishes}
       mode="pinned"
+      sectionId="tasting"
+      scrollLabel="Tasting"
       sectionLabel="Signature Tasting Menu"
       titlePrefix="Chef's Table"
       titleItalic="Sequence"

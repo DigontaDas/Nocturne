@@ -17,6 +17,12 @@ import { formatBdt } from "@/lib/api";
 import { getDishImageClass } from "@/lib/dish-media";
 import { useReservationContext } from "@/context/ReservationContext";
 import { DishCustomizerModal } from "@/components/DishCustomizerModal";
+import { TastingWheelWings } from "@/components/TastingWheelWings";
+import {
+  createDefaultTrayItem,
+  getPairedDish,
+  resolveCuratedFlights,
+} from "@/lib/tasting-logic";
 import { MenuItem } from "@/types/nocturne";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -172,20 +178,26 @@ function ArchWheelPlate({
 
 interface PlanetaryDishWheelProps {
   dishes: MenuItem[];
+  fullCatalog?: MenuItem[];
   mode?: "pinned" | "interactive";
   initialDishSlug?: string;
   sectionLabel?: string;
   titlePrefix?: string;
   titleItalic?: string;
+  sectionId?: string;
+  scrollLabel?: string;
 }
 
 export function PlanetaryDishWheel({
   dishes,
+  fullCatalog,
   mode = "interactive",
   initialDishSlug,
   sectionLabel = "Signature Tasting Sequence",
   titlePrefix = "Tasting",
   titleItalic = "Arch",
+  sectionId,
+  scrollLabel,
 }: PlanetaryDishWheelProps) {
   const { addTrayItem, trayItems } = useReservationContext();
 
@@ -248,8 +260,10 @@ export function PlanetaryDishWheel({
       const next = scrollStepsRef.current + manualOffsetRef.current;
       targetCursor.set(next);
       setActiveIndex(idx);
+    } else if (activeCategory !== "All" && dishes.some((d) => d.slug === initialDishSlug)) {
+      setActiveCategory("All");
     }
-  }, [initialDishSlug, safeDishes, targetCursor]);
+  }, [initialDishSlug, activeCategory, dishes, safeDishes, targetCursor]);
 
   // GSAP ScrollTrigger pinning when mode="pinned" on desktop (>= 1024px) only
   useGSAP(
@@ -365,33 +379,33 @@ export function PlanetaryDishWheel({
   const activeDish = safeDishes[activeIndex % safeDishes.length] ?? safeDishes[0];
   const basePrice = activeDish ? Number(activeDish.base_price_bdt) : 0;
   const trayCount = trayItems.reduce((sum, item) => sum + item.quantity, 0);
+  const catalogForLogic =
+    fullCatalog && fullCatalog.length > 0 ? fullCatalog : dishes;
+  const activePairing = activeDish
+    ? getPairedDish(activeDish, catalogForLogic)
+    : null;
+  const curatedFlights = resolveCuratedFlights(catalogForLogic);
+
+  const jumpToDishSlug = (slug: string) => {
+    let targetIdx = safeDishes.findIndex((d) => d.slug === slug);
+    if (targetIdx < 0) {
+      setActiveCategory("All");
+      targetIdx = dishes.findIndex((d) => d.slug === slug);
+      if (targetIdx < 0) return;
+      const totalCount = Math.max(1, dishes.length);
+      const currentRounded = Math.round(targetCursor.get());
+      const spinBase =
+        targetIdx + Math.round((currentRounded - targetIdx) / totalCount) * totalCount;
+      manualOffsetRef.current = spinBase - scrollStepsRef.current;
+      targetCursor.set(spinBase);
+      setActiveIndex(targetIdx);
+      return;
+    }
+    selectPlateAtIndex(targetIdx);
+  };
 
   const handleQuickAdd = (dish: MenuItem) => {
-    const portion = dish.customization_schema?.portions?.[0];
-    const spice = dish.customization_schema?.spice_levels?.[0];
-    const unitPrice =
-      Number(dish.base_price_bdt) +
-      (portion?.delta_bdt || 0) +
-      (spice?.delta_bdt || 0);
-
-    addTrayItem({
-      key: `${dish.id}::default`,
-      menuItem: dish,
-      quantity: 1,
-      selectedModifiers: {
-        portion: portion?.label,
-        spice: spice?.label,
-        sides: [],
-      },
-      unitPriceBdt: unitPrice,
-      caloriesKcal:
-        dish.calories_kcal + (portion?.delta_kcal || 0) + (spice?.delta_kcal || 0),
-      proteinGrams:
-        dish.protein_grams +
-        (portion?.delta_protein || 0) +
-        (spice?.delta_protein || 0),
-      prepTimeMins: dish.prep_time_mins + (portion?.delta_prep_mins || 0),
-    });
+    addTrayItem(createDefaultTrayItem(dish));
 
     setAddedSlug(dish.slug);
     window.setTimeout(() => {
@@ -408,8 +422,11 @@ export function PlanetaryDishWheel({
 
   return (
     <section
+      id={sectionId}
+      data-scroll-section={scrollLabel ? "" : undefined}
+      data-scroll-label={scrollLabel}
       ref={pinSectionRef}
-      className="relative w-full min-h-[700px] md:min-h-[880px] lg:h-[880px] overflow-hidden flex flex-col items-center justify-start pt-10 md:pt-12 pb-12 md:pb-0 bg-obsidian text-cream border-t border-brass/15 select-none"
+      className="relative w-full min-h-[700px] md:min-h-[880px] lg:h-[880px] overflow-hidden flex flex-col items-center justify-start pt-10 md:pt-12 pb-12 lg:pb-0 bg-obsidian text-cream border-t border-brass/15 select-none"
     >
       {/* Subtle Radial Warm Glow Behind the 12 O'Clock Plate Apex */}
       <div
@@ -724,6 +741,15 @@ export function PlanetaryDishWheel({
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Flanking Culinary Telemetry, Dynamic Pairing & Curated Flight Composer */}
+      <TastingWheelWings
+        activeDish={activeDish}
+        pairing={activePairing}
+        flights={curatedFlights}
+        mode={mode}
+        onJumpToDishSlug={jumpToDishSlug}
+      />
 
       {/* Shared-Layout Dish Customizer Modal */}
       <AnimatePresence>

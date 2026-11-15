@@ -6,6 +6,7 @@ import { ReactLenis, useLenis } from "lenis/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ReservationProvider, useReservationContext } from "@/context/ReservationContext";
+import { FastScrollRail } from "@/components/FastScrollRail";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -67,6 +68,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
         >
           <LenisScrollTriggerSync />
           {children}
+          <FastScrollRail />
         </ReactLenis>
       </ReservationProvider>
     </QueryClientProvider>

@@ -129,6 +129,9 @@ export function CulinaryPhilosophySection() {
 
   return (
     <section
+      id="cellar"
+      data-scroll-section
+      data-scroll-label="Cellar"
       ref={sectionRef}
       className="relative py-24 sm:py-32 px-4 sm:px-8 border-t border-brass/15 bg-obsidian overflow-x-clip"
     >

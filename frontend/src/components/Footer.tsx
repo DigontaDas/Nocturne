@@ -7,7 +7,12 @@ export function Footer() {
   const { setConciergeOpen } = useReservationContext();
 
   return (
-    <footer className="border-t border-brass/20 bg-obsidian py-16 px-5 sm:px-8">
+    <footer
+      id="footer"
+      data-scroll-section
+      data-scroll-label="Footer"
+      className="border-t border-brass/20 bg-obsidian py-16 px-5 sm:px-8"
+    >
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-10 items-start">
         <div className="md:col-span-5">
           <div className="flex items-center gap-3">

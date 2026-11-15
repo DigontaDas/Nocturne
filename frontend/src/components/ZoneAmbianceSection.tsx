@@ -105,6 +105,8 @@ export function ZoneAmbianceSection() {
   return (
     <section
       id="zones"
+      data-scroll-section
+      data-scroll-label="Spaces"
       ref={sectionRef}
       className="relative bg-obsidian text-cream border-t border-brass/15 overflow-x-clip"
     >
