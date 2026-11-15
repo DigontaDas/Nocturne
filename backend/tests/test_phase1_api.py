@@ -270,3 +270,28 @@ def test_database_url_normalization_for_cloud_providers():
     # Empty REDIS_URL should safely instantiate fallback client instead of crashing lifespan
     assert create_redis_client() is not None
     assert callable(bootstrap_database)
+
+
+def test_env_var_cors_escaped_json_and_comma_lists(monkeypatch):
+    from app.core.config import Settings
+
+    monkeypatch.setenv(
+        "CORS_ORIGINS",
+        r'[\"https://nocturne-one-xi.vercel.app\",\"http://localhost:3300\"]',
+    )
+    cfg_escaped = Settings()
+    assert cfg_escaped.CORS_ORIGINS == [
+        "https://nocturne-one-xi.vercel.app",
+        "http://localhost:3300",
+    ]
+
+    monkeypatch.setenv("CORS_ORIGINS", "https://nocturne-one-xi.vercel.app, http://localhost:3300")
+    monkeypatch.setenv("TABLE_DEPOSIT_BDT", '"1000"')
+    monkeypatch.setenv("PAYMENT_ALLOW_DEMO_SIMULATION", '"true"')
+    cfg_csv = Settings()
+    assert cfg_csv.CORS_ORIGINS == [
+        "https://nocturne-one-xi.vercel.app",
+        "http://localhost:3300",
+    ]
+    assert cfg_csv.TABLE_DEPOSIT_BDT == 1000
+    assert cfg_csv.PAYMENT_ALLOW_DEMO_SIMULATION is True

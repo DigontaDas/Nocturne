@@ -1,8 +1,9 @@
 from pathlib import Path
+from typing import Annotated
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from pydantic import field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 def _strip_wrapping_quotes(raw: object) -> str:
@@ -67,7 +68,7 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://nocturne:nocturne_secret@localhost:5433/nocturne"
     )
     REDIS_URL: str = "redis://localhost:6379/0"
-    CORS_ORIGINS: list[str] = [
+    CORS_ORIGINS: Annotated[list[str], NoDecode] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:3300",
@@ -159,20 +160,24 @@ class Settings(BaseSettings):
     )
     @classmethod
     def empty_int_to_default(cls, v: object, info) -> object:
-        if isinstance(v, str) and not v.strip():
-            defaults = {
-                "TABLE_DEPOSIT_BDT": 1000,
-                "FREE_CANCELLATION_HOURS": 4,
-                "NO_SHOW_GRACE_MINUTES": 15,
-            }
-            return defaults[info.field_name]
+        if isinstance(v, str):
+            cleaned = _strip_wrapping_quotes(v)
+            if not cleaned:
+                defaults = {
+                    "TABLE_DEPOSIT_BDT": 1000,
+                    "FREE_CANCELLATION_HOURS": 4,
+                    "NO_SHOW_GRACE_MINUTES": 15,
+                }
+                return defaults[info.field_name]
+            return cleaned
         return v
 
     @field_validator("PAYMENT_ALLOW_DEMO_SIMULATION", mode="before")
     @classmethod
     def empty_bool_to_default(cls, v: object) -> object:
-        if isinstance(v, str) and not v.strip():
-            return True
+        if isinstance(v, str):
+            cleaned = _strip_wrapping_quotes(v)
+            return True if not cleaned else cleaned
         return v
 
     @field_validator("CORS_ORIGINS", mode="before")
@@ -186,6 +191,7 @@ class Settings(BaseSettings):
         ]
         if isinstance(v, str):
             raw = _strip_wrapping_quotes(v)
+            raw = raw.replace('\\"', '"').replace("\\'", "'")
             if not raw:
                 return default_origins
             if raw.startswith("["):
